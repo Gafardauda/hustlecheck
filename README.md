@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# HustlePulse
 
-## Getting Started
+**Check the pulse of your side hustle before you launch.**
 
-First, run the development server:
+HustlePulse is an AI agent that uses [Qloo](https://qloo.com)'s taste graph to check whether a Gen Z side hustle has real local demand: where the customers are, who to partner with, and a data-backed launch plan. Every idea gets a **PulseScore (0–100)** built from audience fit, location demand and partner strength.
+
+Built for the Qloo Agentic Hackathon.
+
+## How it works
+
+1. You describe your hustle idea, your city and (optionally) your budget.
+2. The agent resolves your idea into Qloo tags and comparable brands and places (`/v2/tags`, `/search`).
+3. It measures Gen Z audience affinity and maps which neighbourhoods over-index for that taste (`/v2/insights`, heatmaps).
+4. It finds artists, podcasts, places and brands to partner with, ranked by affinity.
+5. It computes your PulseScore and writes a launch plan that cites the Qloo evidence.
+
+## Tech stack
+
+- Next.js (App Router) + TypeScript + Tailwind CSS
+- Vercel AI SDK with Google Gemini (tool-calling agent)
+- Qloo Insights API
+- Recharts
+
+## Run it locally
+
+Requirements: Node.js 20 or newer.
 
 ```bash
+git clone https://github.com/Gafardauda/hustlecheck.git
+cd hustlecheck
+npm install
+cp .env.local.example .env.local   # then fill in your keys
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable | Purpose |
+| --- | --- |
+| `QLOO_API_KEY` | Qloo hackathon API key |
+| `QLOO_BASE_URL` | Defaults to `https://hackathon.api.qloo.com` |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | Gemini API key for the agent |
+| `USE_MOCK_QLOO` | `true` to use built-in sample data instead of calling Qloo |
 
-## Learn More
+With `USE_MOCK_QLOO=true` (or no Qloo key), the app runs entirely on sample data, so you can try it without a Qloo key.
 
-To learn more about Next.js, take a look at the following resources:
+## License
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+[MIT](LICENSE)

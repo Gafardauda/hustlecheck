@@ -1,6 +1,9 @@
-# HustleCheck — project brief
+# HustlePulse — project brief
 
 Entry for the **Qloo Agentic Hackathon** on Devpost (deadline **Oct 30, 2026, 11:45 pm EDT**). Solo builder: Gafar Dauda (data analyst, Nigeria).
+
+## Tagline
+"Check the pulse of your side hustle before you launch."
 
 ## One-liner
 An AI agent that uses Qloo's taste graph to check if a Gen Z side hustle has real local demand: where the customers are, who to partner with, and a data-backed launch plan.
@@ -36,13 +39,13 @@ An AI agent that uses Qloo's taste graph to check if a Gen Z side hustle has rea
 3. `/v2/insights` with Gen Z audiences (18–24, 25–29) to measure audience affinity.
 4. Heatmap insights over the city → neighbourhoods where the taste over-indexes.
 5. Insights for artists, podcasts, places, brands → partner/collab picks with affinity scores.
-6. Compute **HustleScore (0–100)** = weighted audience fit + location demand + partner strength (transparent formula, shown in UI).
+6. Compute **PulseScore (0–100)** = weighted audience fit + location demand + partner strength (transparent formula, shown in UI).
 7. LLM writes the launch plan, citing the Qloo evidence.
 
 ## Screens
 1. Pitch your hustle (input)
 2. Agent at work (live step trace of Qloo calls)
-3. Demand scorecard: HustleScore, sub-score bars, neighbourhood heatmap, comparable brands, partner picks
+3. Demand scorecard: PulseScore, sub-score bars, neighbourhood heatmap, comparable brands, partner picks
 4. Launch plan (where, who to collab with, naming ideas, first-month checklist; shareable)
 5. "Why trust this": Qloo vs LLM-only benchmark chart + list of every Qloo call
 

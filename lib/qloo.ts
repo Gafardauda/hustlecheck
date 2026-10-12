@@ -432,7 +432,7 @@ function mockInsights(params: Record<string, string>): QlooInsightsResponse {
   }
 
   if (type === "urn:demographics") {
-    // Not used heavily by HustleCheck; return an empty, well-formed payload.
+    // Not used heavily by HustlePulse; return an empty, well-formed payload.
     return { success: true, results: { entities: [] } };
   }
 

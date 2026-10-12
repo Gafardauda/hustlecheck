@@ -26,8 +26,8 @@ Built for the Qloo Agentic Hackathon.
 Requirements: Node.js 20 or newer.
 
 ```bash
-git clone https://github.com/Gafardauda/hustlecheck.git
-cd hustlecheck
+git clone https://github.com/Gafardauda/hustlepulse.git
+cd hustlepulse
 npm install
 cp .env.local.example .env.local   # then fill in your keys
 npm run dev

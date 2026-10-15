@@ -15,6 +15,38 @@ export default function TrustPanel({ report }: { report: HustleReport }) {
   return (
     <div className="grid gap-5">
       <Card>
+        <CardTitle>How this check was made</CardTitle>
+        <ul className="space-y-2 text-sm text-muted">
+          <li>
+            {report.source === "agent" ? (
+              <>
+                A <span className="text-fg">Gemini agent</span> ({report.model}) chose the keywords, comparable brands
+                and taste tags, then called Qloo. The PulseScore is calculated in code from Qloo&apos;s numbers, not by
+                the AI.
+              </>
+            ) : (
+              <>
+                Keywords were <span className="text-fg">matched automatically</span> (no AI) and sent to Qloo. The
+                PulseScore is calculated in code from Qloo&apos;s numbers.
+              </>
+            )}
+          </li>
+          <li>
+            Qloo data:{" "}
+            {report.usedMockData ? (
+              <span className="text-fg">sample data (preview mode)</span>
+            ) : (
+              <span className="text-lime">live from Qloo&apos;s taste graph</span>
+            )}
+            .
+          </li>
+          {report.notes.map((n) => (
+            <li key={n}>Note: {n}</li>
+          ))}
+        </ul>
+      </Card>
+
+      <Card>
         <CardTitle hint="Share of answers that pass each check, HustlePulse (Qloo + AI) vs the same AI with no Qloo data.">
           Qloo vs LLM-only
         </CardTitle>

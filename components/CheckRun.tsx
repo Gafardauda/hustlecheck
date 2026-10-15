@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { HustleInput, HustleReport } from "@/lib/report";
+import type { QlooCallRecord } from "@/lib/qloo";
+import { STEP_KEYS, stepTitle, type AgentStep, type CheckEvent, type HustleInput, type HustleReport } from "@/lib/report";
 import AgentTrace from "./AgentTrace";
 import LaunchPlanView from "./LaunchPlanView";
 import Scorecard from "./Scorecard";
 import TrustPanel from "./TrustPanel";
 
-const STEP_MS = 900;
+/** Minimum gap between revealed steps, so fast (cached) runs still read like an agent at work. */
+const STEP_MS = 600;
 const TABS = ["Scorecard", "Launch plan", "Why trust this"] as const;
 type Tab = (typeof TABS)[number];
 /** URL hash for each tab, so a link can open straight to e.g. the launch plan. */
@@ -20,52 +22,76 @@ function tabFromHash(): Tab {
 }
 
 export default function CheckRun({ input }: { input: HustleInput }) {
+  const [steps, setSteps] = useState<AgentStep[]>([]);
+  const [calls, setCalls] = useState<QlooCallRecord[]>([]);
   const [report, setReport] = useState<HustleReport | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [revealed, setRevealed] = useState(0);
+  const [shown, setShown] = useState(0);
   const [tab, setTab] = useState<Tab>(tabFromHash);
   // A shared link that targets a tab skips the replay and opens results directly.
-  const [skipReplay] = useState(() => tabFromHash() !== "Scorecard");
+  const [skipReplay, setSkipReplay] = useState(() => tabFromHash() !== "Scorecard");
 
   function selectTab(t: Tab) {
     setTab(t);
     window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${TAB_HASH[t]}`);
   }
 
-  const titles = [
-    "Understanding your idea",
-    "Measuring Gen Z appetite",
-    `Mapping demand across ${input.city}`,
-    "Finding collab partners",
-    "Calculating your PulseScore",
-  ];
-
   useEffect(() => {
-    let cancelled = false;
-    fetch("/api/check", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    })
-      .then(async (res) => {
-        const body = await res.json();
-        if (!res.ok) throw new Error(body.error ?? "Something went wrong.");
-        if (!cancelled) setReport(body as HustleReport);
-      })
-      .catch((err: Error) => !cancelled && setError(err.message));
-    return () => {
-      cancelled = true;
+    const controller = new AbortController();
+    const handle = (event: CheckEvent) => {
+      if (event.type === "step")
+        setSteps((prev) => {
+          const i = prev.findIndex((s) => s.key === event.step.key);
+          return i >= 0 ? prev.map((s, j) => (j === i ? event.step : s)) : [...prev, event.step];
+        });
+      else if (event.type === "call")
+        setCalls((prev) => {
+          const next = [...prev];
+          next[event.index] = event.call;
+          return next;
+        });
+      else if (event.type === "report") setReport(event.report);
+      else setError(event.message);
     };
+
+    (async () => {
+      const res = await fetch("/api/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+        signal: controller.signal,
+      });
+      if (!res.ok || !res.body) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? "Something went wrong.");
+      }
+      // Newline-delimited JSON: parse each complete line as it arrives.
+      const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+      let buffer = "";
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += value;
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) if (line.trim()) handle(JSON.parse(line) as CheckEvent);
+      }
+    })().catch((err: Error) => {
+      if (err.name !== "AbortError") setError(err.message || "Connection lost. Please try again.");
+    });
+    return () => controller.abort();
   }, [input]);
 
-  // Reveal one finished step at a time so the trace reads like the agent at work.
+  // Reveal finished steps one at a time.
   useEffect(() => {
-    if (!report || revealed >= titles.length) return;
-    const t = setTimeout(() => setRevealed((r) => r + 1), STEP_MS);
+    if (shown >= steps.length) return;
+    const t = setTimeout(() => setShown((s) => s + 1), STEP_MS);
     return () => clearTimeout(t);
-  }, [report, revealed, titles.length]);
+  }, [shown, steps.length]);
 
-  const done = report !== null && (skipReplay || revealed >= titles.length);
+  const visible = steps.slice(0, shown);
+  const done = report !== null && (skipReplay || shown >= steps.length);
+  const titles = STEP_KEYS.map((key) => ({ key, title: stepTitle(key, input.city) }));
 
   return (
     <div>
@@ -98,12 +124,15 @@ export default function CheckRun({ input }: { input: HustleInput }) {
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-bold">Agent at work</h2>
             {report && (
-              <button onClick={() => setRevealed(titles.length)} className="text-sm text-muted hover:text-fg">
+              <button onClick={() => setSkipReplay(true)} className="text-sm text-muted hover:text-fg">
                 Skip →
               </button>
             )}
           </div>
-          <AgentTrace titles={titles} steps={report?.steps} calls={report?.calls} revealed={revealed} />
+          <AgentTrace titles={titles} steps={visible} calls={calls} />
+          <p className="mt-4 text-xs text-faint">
+            Live Qloo and AI calls can take up to a minute. Every step above is a real request.
+          </p>
         </div>
       ) : (
         <>

@@ -192,6 +192,47 @@ function toQueryParams(params: QlooParams): Record<string, string> {
   return out;
 }
 
+// The hackathon key is rate limited: run at most MAX_CONCURRENT live calls at once,
+// and retry a 429 (rate limit) or dropped connection after a short, growing wait.
+const MAX_CONCURRENT = 3;
+const RETRY_DELAYS_MS = [1200, 2500, 5000];
+let active = 0;
+const waiting: (() => void)[] = [];
+
+async function withSlot<T>(fn: () => Promise<T>): Promise<T> {
+  if (active >= MAX_CONCURRENT) await new Promise<void>((resolve) => waiting.push(resolve));
+  active++;
+  try {
+    return await fn();
+  } finally {
+    active--;
+    waiting.shift()?.();
+  }
+}
+
+async function liveFetch(endpoint: string, params: Record<string, string>): Promise<unknown> {
+  const base = process.env.QLOO_BASE_URL || "https://hackathon.api.qloo.com";
+  const url = `${base}${endpoint}?${new URLSearchParams(params)}`;
+  for (let attempt = 0; ; attempt++) {
+    let res: Response;
+    try {
+      res = await withSlot(() =>
+        fetch(url, { headers: { "X-Api-Key": process.env.QLOO_API_KEY!, Accept: "application/json" } }),
+      );
+    } catch (err) {
+      if (attempt >= RETRY_DELAYS_MS.length) throw err;
+      await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt]));
+      continue;
+    }
+    if (res.ok) return res.json();
+    if (res.status === 429 && attempt < RETRY_DELAYS_MS.length) {
+      await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt]));
+      continue;
+    }
+    throw new Error(`Qloo ${endpoint} returned ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  }
+}
+
 async function request<T>(
   endpoint: QlooCallRecord["endpoint"],
   rawParams: QlooParams,
@@ -216,12 +257,7 @@ async function request<T>(
       await new Promise((r) => setTimeout(r, 150 + Math.random() * 250)); // feel like a network call
       data = mock(params);
     } else {
-      const base = process.env.QLOO_BASE_URL || "https://hackathon.api.qloo.com";
-      const res = await fetch(`${base}${endpoint}?${new URLSearchParams(params)}`, {
-        headers: { "X-Api-Key": process.env.QLOO_API_KEY!, Accept: "application/json" },
-      });
-      if (!res.ok) throw new Error(`Qloo ${endpoint} returned ${res.status}: ${await res.text()}`);
-      data = (await res.json()) as T;
+      data = (await liveFetch(endpoint, params)) as T;
     }
     if (cache.size >= CACHE_LIMIT) cache.delete(cache.keys().next().value!);
     cache.set(cacheKey, data);

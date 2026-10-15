@@ -1,7 +1,7 @@
 /**
  * The HustleReport is everything the screens need for one hustle check.
- * The preview builder (lib/preview-report.ts) produces it today; the Gemini agent
- * will produce the same shape, so the UI doesn't change when the agent lands.
+ * Both the Gemini agent (lib/agent.ts) and the keyword-matching fallback
+ * (lib/preview-report.ts) produce it, so the UI doesn't care which one ran.
  */
 import type { NeighbourhoodDemand, QlooCallRecord } from "./qloo";
 
@@ -40,7 +40,23 @@ export interface Pick {
   imageUrl?: string;
 }
 
+/** The fixed stages of a hustle check, in display order. */
+export const STEP_KEYS = ["idea", "audience", "location", "partners", "score", "plan"] as const;
+export type StepKey = (typeof STEP_KEYS)[number];
+
+export function stepTitle(key: StepKey, city: string): string {
+  return {
+    idea: "Understanding your idea",
+    audience: "Measuring Gen Z appetite",
+    location: `Mapping demand across ${city}`,
+    partners: "Finding collab partners",
+    score: "Calculating your PulseScore",
+    plan: "Writing your launch plan",
+  }[key];
+}
+
 export interface AgentStep {
+  key: StepKey;
   title: string;
   detail: string;
   /** Index into HustleReport.calls for the Qloo calls this step made. */
@@ -64,10 +80,14 @@ export interface BenchmarkRow {
 export interface HustleReport {
   input: HustleInput;
   generatedAt: string;
-  /** "preview" = keyword matching + sample data; "agent" = Gemini agent. */
-  source: "preview" | "agent";
+  /** "agent" = Gemini agent; "preview" = keyword matching (no LLM). */
+  source: "agent" | "preview";
+  /** Gemini model used, when source is "agent". */
+  model?: string;
   /** True when any Qloo call used sample data instead of the live API. */
   usedMockData: boolean;
+  /** Plain-language notes about fallbacks, shown on the "Why trust this" tab. */
+  notes: string[];
   tags: { id: string; name: string }[];
   pulseScore: number;
   subScores: SubScore[];
@@ -79,3 +99,10 @@ export interface HustleReport {
   calls: QlooCallRecord[];
   benchmark: { rows: BenchmarkRow[]; illustrative: boolean };
 }
+
+/** Events streamed from /api/check to the browser, one JSON object per line. */
+export type CheckEvent =
+  | { type: "step"; step: AgentStep }
+  | { type: "call"; index: number; call: QlooCallRecord }
+  | { type: "report"; report: HustleReport }
+  | { type: "error"; message: string };

@@ -6,6 +6,19 @@ import { BUDGETS, CITIES, type CheckEvent, type City, type HustleInput } from "@
 // The agent makes several Gemini and Qloo calls; allow up to a minute.
 export const maxDuration = 60;
 
+/** A short, safe reason for the fallback note (never includes keys or raw provider messages). */
+function agentFailureReason(err: unknown): string {
+  const e = err as { statusCode?: number; lastError?: { statusCode?: number }; message?: string };
+  const status = e.statusCode ?? e.lastError?.statusCode;
+  const msg = e.message?.toLowerCase() ?? "";
+  if (status === 429 || msg.includes("quota") || msg.includes("rate limit")) return "Gemini rate limit or quota reached";
+  if (status === 400 && msg.includes("api key")) return "Gemini API key not valid";
+  if (status === 401 || status === 403) return "Gemini API key rejected";
+  if (status === 404) return "Gemini model not found";
+  if (msg.includes("no qloo taste tags")) return "no matching Qloo tags";
+  return status ? `Gemini error ${status}` : "unexpected error";
+}
+
 /**
  * POST /api/check streams newline-delimited JSON events (see CheckEvent):
  * each finished step and Qloo call as it happens, then the full report.
@@ -43,7 +56,7 @@ export async function POST(req: Request) {
           } catch (err) {
             console.error("Agent failed; falling back to keyword matching", err);
             const run = new Run(input, {}, send);
-            run.notes.push("The AI agent was unavailable, so keywords were matched automatically.");
+            run.notes.push(`The AI agent was unavailable (${agentFailureReason(err)}), so keywords were matched automatically.`);
             report = await buildPreviewReport(run);
           }
         } else {

@@ -1,26 +1,34 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/* HustlePulse is a dark-only brand: dark violet base, electric lime accent, violet. */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-ink: #0e0b1f; /* page background */
+  --color-panel: #171230; /* cards */
+  --color-panel-2: #211a42; /* raised / hover */
+  --color-line: #2e2557; /* borders, grid lines */
+  --color-lime: #c6ff3d; /* accent, single-series marks */
+  --color-violet: #7c3aed; /* brand violet */
+  --color-violet-soft: #a78bfa; /* violet text on dark */
+  --color-fg: #f4f2ff; /* primary text */
+  --color-muted: #a49cc7; /* secondary text */
+  --color-faint: #6f6796; /* tertiary text */
+  /* Two-series chart pair, validated for colour-blind separation on --color-ink */
+  --color-series-qloo: #70a500;
+  --color-series-llm: #8b5cf6;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-ink);
+  color: var(--color-fg);
+}
+
+::selection {
+  background: var(--color-lime);
+  color: var(--color-ink);
 }

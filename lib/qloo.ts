@@ -112,6 +112,8 @@ export interface QlooCallRecord {
   ms: number;
   resultCount: number;
   ok: boolean;
+  /** True when served from the server's in-memory cache (no network call made). */
+  cached?: boolean;
   error?: string;
 }
 
@@ -131,22 +133,27 @@ export function isMockMode(): boolean {
   return process.env.USE_MOCK_QLOO === "true" || !process.env.QLOO_API_KEY;
 }
 
+/** Per-call override: `mock: true` forces sample data even when a live key is set. */
+export interface QlooCallOptions {
+  mock?: boolean;
+}
+
 /** GET /search — resolve a name like "Nike" or "Burna Boy" to Qloo entities. */
 export function searchEntities(
   query: string,
-  opts: { types?: QlooEntityType[]; take?: number } = {},
+  opts: { types?: QlooEntityType[]; take?: number } & QlooCallOptions = {},
 ): Promise<QlooResult<QlooSearchResponse>> {
   const params: QlooParams = { query, types: opts.types, take: opts.take ?? 5 };
-  return request("/search", params, (p) => mockSearch(p), (d) => d.results.length);
+  return request("/search", params, (p) => mockSearch(p), (d) => d.results.length, opts);
 }
 
 /** GET /v2/tags — find tag IDs by keyword, e.g. "thrift" or "jollof". */
 export function findTags(
   query: string,
-  opts: { take?: number } = {},
+  opts: { take?: number } & QlooCallOptions = {},
 ): Promise<QlooResult<QlooTagsResponse>> {
   const params: QlooParams = { "filter.query": query, take: opts.take ?? 5 };
-  return request("/v2/tags", params, (p) => mockTags(p), (d) => d.results.tags.length);
+  return request("/v2/tags", params, (p) => mockTags(p), (d) => d.results.tags.length, opts);
 }
 
 /**
@@ -155,13 +162,17 @@ export function findTags(
  *   { "filter.type": "urn:heatmap", "filter.location.query": "Lagos",
  *     "signal.interests.tags": ["urn:tag:genre:place:streetwear"] }
  */
-export function getInsights(params: QlooParams): Promise<QlooResult<QlooInsightsResponse>> {
+export function getInsights(
+  params: QlooParams,
+  opts: QlooCallOptions = {},
+): Promise<QlooResult<QlooInsightsResponse>> {
   if (!params["filter.type"]) throw new Error("getInsights: 'filter.type' is required");
   return request(
     "/v2/insights",
     params,
     (p) => mockInsights(p),
     (d) => (d.results.entities?.length ?? 0) + (d.results.heatmap?.length ?? 0),
+    opts,
   );
 }
 
@@ -186,16 +197,17 @@ async function request<T>(
   rawParams: QlooParams,
   mock: (params: Record<string, string>) => T,
   count: (data: T) => number,
+  opts: QlooCallOptions = {},
 ): Promise<QlooResult<T>> {
   const params = toQueryParams(rawParams);
-  const useMock = isMockMode();
+  const useMock = opts.mock ?? isMockMode();
   const started = Date.now();
   const call: QlooCallRecord = { endpoint, params, mock: useMock, ms: 0, resultCount: 0, ok: true };
 
   const cacheKey = `${useMock}:${endpoint}?${new URLSearchParams(params).toString()}`;
   if (cache.has(cacheKey)) {
     const data = cache.get(cacheKey) as T;
-    return { data, call: { ...call, resultCount: count(data) } };
+    return { data, call: { ...call, cached: true, resultCount: count(data) } };
   }
 
   try {
@@ -448,6 +460,13 @@ function toEntity(seed: MockSeed, shape: "search" | "insights" = "search"): Qloo
 }
 
 /** Score how well a seed matches some free text (0–1). */
+/** Insights matching: 0 hits → 0, 1 hit → 0.5, 2+ hits → 1 (signals are short tag lists). */
+function signalMatch(seed: MockSeed, text: string): number {
+  const words = new Set(text.toLowerCase().split(/[^a-z0-9&]+/).filter((w) => w.length > 2));
+  const hay = `${seed.description} ${seed.keywords.join(" ")}`.toLowerCase();
+  return Math.min(1, [...words].filter((w) => hay.includes(w)).length / 2);
+}
+
 function textMatch(seed: MockSeed, text: string): number {
   const words = text.toLowerCase().split(/[^a-z0-9&]+/).filter((w) => w.length > 2);
   if (!words.length) return 0;
@@ -490,12 +509,8 @@ function mockInsights(params: Record<string, string>): QlooInsightsResponse {
   const type = params["filter.type"];
   const seedText = Object.values(params).join("|");
   const rand = seeded(seedText);
-  const signalText = [
-    params["signal.interests.tags"],
-    params["signal.interests.entities"],
-    params["filter.tags"],
-    params["filter.location.query"],
-  ]
+  // Entity IDs are opaque UUIDs, so mock matching uses only tag names and the city.
+  const signalText = [params["signal.interests.tags"], params["filter.tags"], params["filter.location.query"]]
     .filter(Boolean)
     .join(" ")
     .replace(/urn:tag:[a-z_]+:([a-z_]+:)*/g, " ")
@@ -529,10 +544,13 @@ function mockInsights(params: Record<string, string>): QlooInsightsResponse {
     return { success: true, results: { entities: [] } };
   }
 
-  const pool = MOCK_ENTITIES.filter((e) => e.type === type);
+  const city = params["filter.location.query"]?.toLowerCase().split(",")[0].trim();
+  const pool = MOCK_ENTITIES.filter(
+    (e) => e.type === type && (type !== "urn:entity:place" || !city || e.keywords.includes(city)),
+  );
   const entities = pool
     .map((e) => {
-      const match = signalText ? textMatch(e, signalText) : 0;
+      const match = signalText ? signalMatch(e, signalText) : 0;
       const affinity = Math.min(0.99, 0.35 + match * 0.45 + boost + rand() * 0.15);
       return {
         ...toEntity(e, "insights"),

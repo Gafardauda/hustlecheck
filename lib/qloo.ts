@@ -12,7 +12,7 @@
  */
 
 // ---------------------------------------------------------------------------
-// Types (shaped after Qloo's documented responses; extra fields are allowed)
+// Types (checked against live hackathon responses on 2026-10-15; extra fields are allowed)
 // ---------------------------------------------------------------------------
 
 export type QlooEntityType =
@@ -29,43 +29,59 @@ export type QlooEntityType =
 
 export type QlooInsightType = QlooEntityType | "urn:heatmap" | "urn:demographics";
 
+/** A tag as returned by /v2/tags. */
 export interface QlooTag {
-  id: string; // e.g. "urn:tag:genre:place:streetwear"
+  id: string; // e.g. "urn:tag:genre:place:thrift_store"
   name: string;
   type: string; // e.g. "urn:tag:genre:place"
+  /** Entity types the tag applies to, e.g. [{ type: "urn:entity:place" }]. */
+  parents?: { type: string }[];
+  popularity?: number;
+}
+
+/** A tag as embedded in an entity (uses `tag_id`, not `id`). */
+export interface QlooEntityTag {
+  tag_id: string;
+  name: string;
+  type: string;
   value?: string;
 }
 
 export interface QlooEntity {
   entity_id: string;
   name: string;
-  types: QlooEntityType[];
+  /** /search returns `types`; /v2/insights returns `type: "urn:entity"` plus `subtype`. */
+  types?: QlooEntityType[];
+  type?: string;
   subtype?: string;
   popularity: number; // 0–1 percentile
+  disambiguation?: string;
   properties?: {
     short_description?: string;
+    description?: string;
     address?: string;
     image?: { url: string };
     [key: string]: unknown;
   };
-  location?: { lat: number; lon: number };
-  tags?: QlooTag[];
+  location?: { lat: number; lon: number; geohash?: string };
+  tags?: QlooEntityTag[];
   /** Present on /v2/insights results: how strongly the entity matches the signals. */
   query?: {
     affinity: number; // 0–1
+    distance?: number;
     measurements?: { audience_growth?: number };
   };
 }
 
+/** Qloo heatmap cells carry coordinates only; use labelNeighbourhoods() to name them. */
 export interface QlooHeatmapCell {
   location: { latitude: number; longitude: number; geohash: string };
   query: {
     affinity: number; // 0–1, how much this area over-indexes for the taste
-    affinity_rank: number; // 0–1 percentile within the city
+    affinity_rank: number; // 0–1 percentile within the area
     popularity: number; // 0–1
+    [key: string]: number; // per-signal breakdowns, e.g. entity_artist_affinity
   };
-  /** Not part of Qloo's response; added by mock mode so the UI can label cells. */
-  neighbourhood?: string;
 }
 
 export interface QlooSearchResponse {
@@ -83,6 +99,8 @@ export interface QlooInsightsResponse {
     entities?: QlooEntity[];
     heatmap?: QlooHeatmapCell[];
   };
+  /** How Qloo resolved filter.location.query, e.g. "Lagos" → "Lagos, Nigeria". */
+  query?: { localities?: { filter?: QlooEntity[] } };
   duration?: number;
 }
 
@@ -276,42 +294,59 @@ const MOCK_ENTITIES: MockSeed[] = [
   { name: "Brick Lane Market", type: "urn:entity:place", description: "Vintage and street food market, London", keywords: ["thrift", "vintage", "food", "market", "london"], popularity: 0.89 },
 ];
 
+/** Mock tags use real IDs seen in live /v2/tags responses. */
+const mockTag = (id: string, name: string, parents: string[] = ["urn:entity:place"]): QlooTag => ({
+  id,
+  name,
+  type: id.split(":").slice(0, -1).join(":"),
+  parents: parents.map((type) => ({ type })),
+  popularity: 0.58,
+});
+
 const MOCK_TAGS: QlooTag[] = [
-  { id: "urn:tag:genre:place:streetwear", name: "Streetwear", type: "urn:tag:genre:place" },
-  { id: "urn:tag:genre:place:thrift_store", name: "Thrift Store", type: "urn:tag:genre:place" },
-  { id: "urn:tag:genre:place:vintage_clothing", name: "Vintage Clothing", type: "urn:tag:genre:place" },
-  { id: "urn:tag:style:brand:sustainable_fashion", name: "Sustainable Fashion", type: "urn:tag:style:brand" },
-  { id: "urn:tag:genre:place:restaurant:nigerian", name: "Nigerian", type: "urn:tag:genre:place:restaurant" },
-  { id: "urn:tag:genre:place:restaurant:west_african", name: "West African", type: "urn:tag:genre:place:restaurant" },
-  { id: "urn:tag:genre:place:bubble_tea", name: "Bubble Tea", type: "urn:tag:genre:place" },
-  { id: "urn:tag:genre:place:cafe", name: "Cafe", type: "urn:tag:genre:place" },
-  { id: "urn:tag:genre:place:bakery", name: "Bakery", type: "urn:tag:genre:place" },
-  { id: "urn:tag:genre:place:beauty_salon", name: "Beauty Salon", type: "urn:tag:genre:place" },
-  { id: "urn:tag:genre:place:nail_salon", name: "Nail Salon", type: "urn:tag:genre:place" },
-  { id: "urn:tag:genre:place:barber_shop", name: "Barber Shop", type: "urn:tag:genre:place" },
-  { id: "urn:tag:style:brand:skincare", name: "Skincare", type: "urn:tag:style:brand" },
-  { id: "urn:tag:genre:place:gym", name: "Gym", type: "urn:tag:genre:place" },
-  { id: "urn:tag:genre:music:afrobeats", name: "Afrobeats", type: "urn:tag:genre:music" },
-  { id: "urn:tag:genre:music:amapiano", name: "Amapiano", type: "urn:tag:genre:music" },
-  { id: "urn:tag:genre:music:alte", name: "Alté", type: "urn:tag:genre:music" },
-  { id: "urn:tag:genre:place:photography_studio", name: "Photography Studio", type: "urn:tag:genre:place" },
-  { id: "urn:tag:genre:place:video_game_store", name: "Video Game Store", type: "urn:tag:genre:place" },
-  { id: "urn:tag:genre:place:event_venue", name: "Event Venue", type: "urn:tag:genre:place" },
-  { id: "urn:tag:keyword:brand:content_creation", name: "Content Creation", type: "urn:tag:keyword:brand" },
-  { id: "urn:tag:genre:podcast:business", name: "Business", type: "urn:tag:genre:podcast" },
+  mockTag("urn:tag:genre:place:thrift_store", "Thrift Store"),
+  mockTag("urn:tag:category:place:thrift_store", "Thrift Store"),
+  mockTag("urn:tag:decor:qloo:thrifted", "Thrifted"),
+  mockTag("urn:tag:ambience:qloo:streetwear_culture_influence", "Streetwear Culture Influence"),
+  mockTag("urn:tag:decor:qloo:streetwear_store_integration", "Streetwear Store Integration"),
+  mockTag("urn:tag:genre:place:vintage_clothing_store", "Vintage Clothing Store"),
+  mockTag("urn:tag:specialty_dish:place:jollof", "Jollof"),
+  mockTag("urn:tag:specialty_dish:place:jollof_rice", "Jollof Rice"),
+  mockTag("urn:tag:genre:place:restaurant:nigerian", "Nigerian Restaurant"),
+  mockTag("urn:tag:genre:place:bubble_tea_shop", "Bubble Tea Shop"),
+  mockTag("urn:tag:genre:place:cafe", "Cafe"),
+  mockTag("urn:tag:genre:place:bakery", "Bakery"),
+  mockTag("urn:tag:genre:place:beauty_salon", "Beauty Salon"),
+  mockTag("urn:tag:genre:place:nail_salon", "Nail Salon"),
+  mockTag("urn:tag:category:place:nail_salon", "Nail Salon"),
+  mockTag("urn:tag:genre:place:barber_shop", "Barber Shop"),
+  mockTag("urn:tag:genre:place:gym", "Gym"),
+  mockTag("urn:tag:genre:place:photography_studio", "Photography Studio"),
+  mockTag("urn:tag:genre:place:event_venue", "Event Venue"),
+  mockTag("urn:tag:genre:music:afrobeats", "Afrobeats", ["urn:entity:artist", "urn:entity:album"]),
+  mockTag("urn:tag:good_for:qloo:afrobeats_nights", "Afrobeats Nights"),
+  mockTag("urn:tag:genre:music:amapiano", "Amapiano", ["urn:entity:artist", "urn:entity:album"]),
+  mockTag("urn:tag:genre:music:alte", "Alté", ["urn:entity:artist", "urn:entity:album"]),
+  mockTag("urn:tag:genre:podcast:business", "Business", ["urn:entity:podcast"]),
 ];
 
-/** City neighbourhood centroids for mock heatmaps. `bias` = how Gen Z / trend-led the area is. */
-const MOCK_CITIES: Record<string, { name: string; lat: number; lon: number; bias: number }[]> = {
+/**
+ * Neighbourhood centres used to name heatmap cells (Qloo returns coordinates only).
+ * `bias` is used only by mock mode: how Gen Z / trend-led the area is.
+ */
+export const CITY_NEIGHBOURHOODS: Record<string, { name: string; lat: number; lon: number; bias: number }[]> = {
   lagos: [
     { name: "Yaba", lat: 6.5095, lon: 3.3711, bias: 0.95 },
     { name: "Lekki Phase 1", lat: 6.4478, lon: 3.4723, bias: 0.9 },
     { name: "Victoria Island", lat: 6.4281, lon: 3.4219, bias: 0.82 },
-    { name: "Ikeja GRA", lat: 6.5833, lon: 3.35, bias: 0.75 },
+    { name: "Lagos Island", lat: 6.4541, lon: 3.3947, bias: 0.8 },
+    { name: "Ikeja", lat: 6.6018, lon: 3.3515, bias: 0.75 },
     { name: "Surulere", lat: 6.5, lon: 3.35, bias: 0.7 },
     { name: "Ikoyi", lat: 6.4549, lon: 3.4366, bias: 0.6 },
     { name: "Ajah", lat: 6.4698, lon: 3.5852, bias: 0.62 },
     { name: "Gbagada", lat: 6.5527, lon: 3.3895, bias: 0.58 },
+    { name: "Maryland", lat: 6.5706, lon: 3.3654, bias: 0.55 },
+    { name: "Apapa", lat: 6.4489, lon: 3.3594, bias: 0.45 },
     { name: "Festac", lat: 6.4669, lon: 3.2836, bias: 0.5 },
     { name: "Ikorodu", lat: 6.6194, lon: 3.5105, bias: 0.4 },
   ],
@@ -321,6 +356,7 @@ const MOCK_CITIES: Record<string, { name: string; lat: number; lon: number; bias
     { name: "Brixton", lat: 51.4613, lon: -0.1156, bias: 0.88 },
     { name: "Camden", lat: 51.539, lon: -0.1426, bias: 0.85 },
     { name: "Dalston", lat: 51.5463, lon: -0.0753, bias: 0.82 },
+    { name: "Soho", lat: 51.5136, lon: -0.1365, bias: 0.8 },
     { name: "Stratford", lat: 51.5416, lon: -0.0034, bias: 0.65 },
     { name: "Croydon", lat: 51.3762, lon: -0.0982, bias: 0.55 },
     { name: "Kensington", lat: 51.4991, lon: -0.1938, bias: 0.45 },
@@ -329,28 +365,85 @@ const MOCK_CITIES: Record<string, { name: string; lat: number; lon: number; bias
     { name: "Osu", lat: 5.556, lon: -0.1823, bias: 0.95 },
     { name: "East Legon", lat: 5.6359, lon: -0.1617, bias: 0.85 },
     { name: "Labone", lat: 5.5686, lon: -0.1723, bias: 0.75 },
+    { name: "Accra Central", lat: 5.5502, lon: -0.2174, bias: 0.7 },
     { name: "Madina", lat: 5.6681, lon: -0.1659, bias: 0.6 },
     { name: "Airport Residential", lat: 5.6047, lon: -0.1781, bias: 0.6 },
     { name: "Tema", lat: 5.6698, lon: -0.0166, bias: 0.45 },
   ],
 };
 
-function toEntity(seed: MockSeed, extraTags: QlooTag[] = []): QlooEntity {
+export interface NeighbourhoodDemand {
+  name: string;
+  lat: number;
+  lon: number;
+  /** Mean affinity of the heatmap cells assigned to this neighbourhood (0–1). */
+  affinity: number;
+  /** Highest single-cell affinity in the neighbourhood (0–1). */
+  peakAffinity: number;
+  cells: number;
+}
+
+const kmBetween = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.sqrt(a));
+};
+
+/**
+ * Group heatmap cells into named neighbourhoods: each cell goes to the nearest
+ * neighbourhood centre within `maxKm`; cells further away are dropped.
+ * Returns neighbourhoods sorted by affinity, highest first.
+ */
+export function labelNeighbourhoods(
+  cells: QlooHeatmapCell[],
+  city: string,
+  maxKm = 3,
+): NeighbourhoodDemand[] {
+  const hoods = CITY_NEIGHBOURHOODS[city.toLowerCase().split(",")[0].trim()];
+  if (!hoods) return [];
+  const groups = new Map<string, number[]>();
+  for (const cell of cells) {
+    let best: { name: string; km: number } | undefined;
+    for (const h of hoods) {
+      const km = kmBetween(cell.location.latitude, cell.location.longitude, h.lat, h.lon);
+      if (km <= maxKm && (!best || km < best.km)) best = { name: h.name, km };
+    }
+    if (best) groups.set(best.name, [...(groups.get(best.name) ?? []), cell.query.affinity]);
+  }
+  return hoods
+    .filter((h) => groups.has(h.name))
+    .map((h) => {
+      const values = groups.get(h.name)!;
+      return {
+        name: h.name,
+        lat: h.lat,
+        lon: h.lon,
+        affinity: round(values.reduce((s, v) => s + v, 0) / values.length),
+        peakAffinity: round(Math.max(...values)),
+        cells: values.length,
+      };
+    })
+    .sort((a, b) => b.affinity - a.affinity);
+}
+
+/** Shape a mock seed like /search (`types`) or /v2/insights (`type` + `subtype`) results. */
+function toEntity(seed: MockSeed, shape: "search" | "insights" = "search"): QlooEntity {
+  const kind = seed.type.split(":").pop();
   return {
     entity_id: fakeId(seed.name),
     name: seed.name,
-    types: [seed.type],
-    subtype: seed.type === "urn:entity:place" ? "urn:entity:place" : undefined,
+    ...(shape === "search" ? { types: [seed.type] } : { type: "urn:entity", subtype: seed.type }),
     popularity: seed.popularity,
+    disambiguation: seed.name,
     properties: { short_description: seed.description },
-    tags: [
-      ...seed.keywords.slice(0, 3).map((k) => ({
-        id: `urn:tag:keyword:${seed.type.split(":").pop()}:${slug(k)}`,
-        name: k,
-        type: `urn:tag:keyword:${seed.type.split(":").pop()}`,
-      })),
-      ...extraTags,
-    ],
+    tags: seed.keywords.slice(0, 3).map((k) => ({
+      tag_id: `urn:tag:keyword:${kind}:${slug(k)}`,
+      name: k,
+      type: `urn:tag:keyword:${kind}`,
+      value: `urn:tag:keyword:${kind}:${slug(k)}`,
+    })),
   };
 }
 
@@ -411,21 +504,21 @@ function mockInsights(params: Record<string, string>): QlooInsightsResponse {
   const take = Number(params.take ?? 10);
 
   if (type === "urn:heatmap") {
+    // Live Qloo returns hundreds of unnamed grid cells; mock a small grid around each neighbourhood.
     const cityKey = (params["filter.location.query"] ?? "lagos").toLowerCase().split(",")[0].trim();
-    const hoods = MOCK_CITIES[cityKey] ?? MOCK_CITIES.lagos;
+    const hoods = CITY_NEIGHBOURHOODS[cityKey] ?? CITY_NEIGHBOURHOODS.lagos;
     const heatmap: QlooHeatmapCell[] = hoods
-      .map((h) => {
-        const affinity = Math.min(0.99, h.bias * (0.7 + rand() * 0.25) + boost);
-        return {
-          neighbourhood: h.name,
-          location: {
-            latitude: round(h.lat + (rand() - 0.5) * 0.01, 4),
-            longitude: round(h.lon + (rand() - 0.5) * 0.01, 4),
-            geohash: `s${slug(h.name).slice(0, 5)}`,
-          },
-          query: { affinity: round(affinity), affinity_rank: 0, popularity: round(0.3 + rand() * 0.6) },
-        };
-      })
+      .flatMap((h) =>
+        Array.from({ length: 9 }, (_, i) => {
+          const affinity = Math.min(1, h.bias * (0.6 + rand() * 0.35) + boost);
+          const latitude = round(h.lat + (Math.floor(i / 3) - 1) * 0.012, 6);
+          const longitude = round(h.lon + ((i % 3) - 1) * 0.012, 6);
+          return {
+            location: { latitude, longitude, geohash: `s${Math.round(latitude * 1e3)}${Math.round(longitude * 1e3)}` },
+            query: { affinity: round(affinity), affinity_rank: 0, popularity: round(0.2 + rand() * 0.8) },
+          };
+        }),
+      )
       .sort((a, b) => b.query.affinity - a.query.affinity);
     heatmap.forEach((c, i) => (c.query.affinity_rank = round(1 - i / heatmap.length)));
     return { success: true, results: { heatmap }, duration: Math.round(80 + rand() * 120) };
@@ -442,10 +535,11 @@ function mockInsights(params: Record<string, string>): QlooInsightsResponse {
       const match = signalText ? textMatch(e, signalText) : 0;
       const affinity = Math.min(0.99, 0.35 + match * 0.45 + boost + rand() * 0.15);
       return {
-        ...toEntity(e),
+        ...toEntity(e, "insights"),
         query: {
           affinity: round(affinity),
-          measurements: { audience_growth: round((rand() - 0.3) * 0.4) },
+          distance: 0,
+          measurements: { audience_growth: 0 },
         },
       };
     })

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AUDIENCES, BUDGETS, CITIES, type AudienceKey, type City } from "@/lib/report";
@@ -116,13 +117,18 @@ export default function PitchForm() {
         </div>
       </div>
 
-      <button
-        type="submit"
-        disabled={tooShort || submitting}
-        className="mt-7 w-full rounded-xl bg-lime px-7 py-4 text-base font-black text-ink transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 enabled:glow-lime sm:w-auto"
-      >
-        {submitting ? "Reading the vibe…" : "Check my hustle →"}
-      </button>
+      <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-3">
+        <button
+          type="submit"
+          disabled={tooShort || submitting}
+          className="w-full rounded-xl bg-lime px-7 py-4 text-base font-black text-ink transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 enabled:glow-lime sm:w-auto"
+        >
+          {submitting ? "Reading the vibe…" : "Check my hustle →"}
+        </button>
+        <Link href="/compare" className="text-sm font-semibold text-violet-soft hover:text-lime">
+          Not sure which city? Compare all →
+        </Link>
+      </div>
     </form>
   );
 }

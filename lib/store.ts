@@ -10,9 +10,18 @@ import type { HustleReport } from "./report";
 const TTL_SECONDS = 60 * 60 * 24 * 90; // 90 days
 const ID_PATTERN = /^[A-Za-z0-9]{10}$/;
 
-// The Vercel Marketplace integration names these KV_REST_API_*; a direct Upstash setup uses UPSTASH_REDIS_REST_*.
-const url = process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL;
-const token = process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN;
+// Env var names vary: a direct setup uses KV_REST_API_* or UPSTASH_REDIS_REST_*, while
+// the Vercel Marketplace integration prefixes them with the store name
+// (e.g. hustlepulseredis_KV_REST_API_URL). Match by suffix so any of them work.
+function findEnv(suffixes: string[]): string | undefined {
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value && suffixes.some((s) => key === s || key.endsWith(`_${s}`))) return value;
+  }
+  return undefined;
+}
+
+const url = findEnv(["KV_REST_API_URL", "UPSTASH_REDIS_REST_URL"]);
+const token = findEnv(["KV_REST_API_TOKEN", "UPSTASH_REDIS_REST_TOKEN"]);
 const redis = url && token ? new Redis({ url, token }) : null;
 
 export function storeAvailable(): boolean {

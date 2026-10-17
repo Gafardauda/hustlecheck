@@ -2,6 +2,7 @@ import { agentAvailable, runAgent } from "@/lib/agent";
 import { Run } from "@/lib/pipeline";
 import { buildPreviewReport } from "@/lib/preview-report";
 import { BUDGETS, CITIES, type CheckEvent, type City, type HustleInput } from "@/lib/report";
+import { saveReport } from "@/lib/store";
 
 // The agent makes several Gemini and Qloo calls; allow up to a minute.
 export const maxDuration = 60;
@@ -62,7 +63,9 @@ export async function POST(req: Request) {
         } else {
           report = await buildPreviewReport(new Run(input, {}, send));
         }
-        send({ type: "report", report });
+        // Save it so the share link can show this exact report later (skipped if storage is off).
+        const id = await saveReport(report);
+        send({ type: "report", report: id ? { ...report, id } : report });
       } catch (err) {
         console.error("Hustle check failed", err);
         send({ type: "error", message: "The hustle check failed. Please try again in a minute." });

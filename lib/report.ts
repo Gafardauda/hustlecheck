@@ -78,6 +78,8 @@ export interface BenchmarkRow {
 }
 
 export interface HustleReport {
+  /** Share ID, set once the report is saved (see lib/store.ts). */
+  id?: string;
   input: HustleInput;
   generatedAt: string;
   /** "agent" = Gemini agent; "preview" = keyword matching (no LLM). */

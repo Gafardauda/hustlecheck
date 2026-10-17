@@ -5,21 +5,10 @@ import { useEffect, useState } from "react";
 import type { QlooCallRecord } from "@/lib/qloo";
 import { STEP_KEYS, stepTitle, type AgentStep, type CheckEvent, type HustleInput, type HustleReport } from "@/lib/report";
 import AgentTrace from "./AgentTrace";
-import LaunchPlanView from "./LaunchPlanView";
-import Scorecard from "./Scorecard";
-import TrustPanel from "./TrustPanel";
+import ReportView, { ReportHeader, tabFromHash } from "./ReportView";
 
 /** Minimum gap between revealed steps, so fast (cached) runs still read like an agent at work. */
 const STEP_MS = 600;
-const TABS = ["Scorecard", "Launch plan", "Why trust this"] as const;
-type Tab = (typeof TABS)[number];
-/** URL hash for each tab, so a link can open straight to e.g. the launch plan. */
-const TAB_HASH: Record<Tab, string> = { Scorecard: "", "Launch plan": "#plan", "Why trust this": "#trust" };
-
-function tabFromHash(): Tab {
-  if (typeof window === "undefined") return "Scorecard";
-  return TABS.find((t) => TAB_HASH[t] && TAB_HASH[t] === window.location.hash) ?? "Scorecard";
-}
 
 export default function CheckRun({ input }: { input: HustleInput }) {
   const [steps, setSteps] = useState<AgentStep[]>([]);
@@ -27,14 +16,8 @@ export default function CheckRun({ input }: { input: HustleInput }) {
   const [report, setReport] = useState<HustleReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [shown, setShown] = useState(0);
-  const [tab, setTab] = useState<Tab>(tabFromHash);
-  // A shared link that targets a tab skips the replay and opens results directly.
+  // A link that targets a tab skips the replay and opens results directly.
   const [skipReplay, setSkipReplay] = useState(() => tabFromHash() !== "Scorecard");
-
-  function selectTab(t: Tab) {
-    setTab(t);
-    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${TAB_HASH[t]}`);
-  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -50,8 +33,13 @@ export default function CheckRun({ input }: { input: HustleInput }) {
           next[event.index] = event.call;
           return next;
         });
-      else if (event.type === "report") setReport(event.report);
-      else setError(event.message);
+      else if (event.type === "report") {
+        setReport(event.report);
+        // Saved reports get a permanent address; "Copy share link" then shares this exact result.
+        if (event.report.id) {
+          window.history.replaceState(null, "", `/r/${event.report.id}${window.location.hash}`);
+        }
+      } else setError(event.message);
     };
 
     (async () => {
@@ -89,28 +77,13 @@ export default function CheckRun({ input }: { input: HustleInput }) {
     return () => clearTimeout(t);
   }, [shown, steps.length]);
 
-  const visible = steps.slice(0, shown);
   const done = report !== null && (skipReplay || shown >= steps.length);
-  const titles = STEP_KEYS.map((key) => ({ key, title: stepTitle(key, input.city) }));
+  if (done) return <ReportView report={report} />;
 
+  const titles = STEP_KEYS.map((key) => ({ key, title: stepTitle(key, input.city) }));
   return (
     <div>
-      <div className="mb-8">
-        <Link href="/" className="text-sm text-muted hover:text-fg">
-          ← New check
-        </Link>
-        <h1 className="mt-3 text-2xl font-black tracking-tight sm:text-4xl">{input.idea}</h1>
-        <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted">
-          <span>{input.city}</span>
-          {input.budget && <span>· Budget {input.budget}</span>}
-          {report?.usedMockData && (
-            <span className="rounded-full border border-violet-soft/50 px-2 py-0.5 text-xs text-violet-soft">
-              Preview · sample Qloo data
-            </span>
-          )}
-        </p>
-      </div>
-
+      <ReportHeader idea={input.idea} city={input.city} budget={input.budget} />
       {error ? (
         <div role="alert" className="rounded-2xl border border-red-400/50 bg-panel p-6">
           <p className="font-semibold">The agent hit a problem.</p>
@@ -119,7 +92,7 @@ export default function CheckRun({ input }: { input: HustleInput }) {
             Try again
           </Link>
         </div>
-      ) : !done ? (
+      ) : (
         <div className="max-w-2xl">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-bold">Agent at work</h2>
@@ -129,32 +102,11 @@ export default function CheckRun({ input }: { input: HustleInput }) {
               </button>
             )}
           </div>
-          <AgentTrace titles={titles} steps={visible} calls={calls} />
+          <AgentTrace titles={titles} steps={steps.slice(0, shown)} calls={calls} />
           <p className="mt-4 text-xs text-faint">
             Live Qloo and AI calls can take up to a minute. Every step above is a real request.
           </p>
         </div>
-      ) : (
-        <>
-          <div role="tablist" className="mb-6 flex gap-1 overflow-x-auto rounded-xl border border-line bg-panel p-1">
-            {TABS.map((t) => (
-              <button
-                key={t}
-                role="tab"
-                aria-selected={tab === t}
-                onClick={() => selectTab(t)}
-                className={`flex-1 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                  tab === t ? "bg-lime text-ink" : "text-muted hover:text-fg"
-                }`}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-          {tab === "Scorecard" && <Scorecard report={report} />}
-          {tab === "Launch plan" && <LaunchPlanView report={report} />}
-          {tab === "Why trust this" && <TrustPanel report={report} />}
-        </>
       )}
     </div>
   );

@@ -70,7 +70,7 @@ export interface Pick {
 }
 
 /** The fixed stages of a hustle check, in display order. */
-export const STEP_KEYS = ["idea", "audience", "location", "partners", "score", "plan"] as const;
+export const STEP_KEYS = ["idea", "audience", "location", "partners", "taste", "score", "plan"] as const;
 export type StepKey = (typeof STEP_KEYS)[number];
 
 export function stepTitle(key: StepKey, city: string): string {
@@ -79,9 +79,25 @@ export function stepTitle(key: StepKey, city: string): string {
     audience: "Checking who's into it",
     location: `Finding your hotspots in ${city}`,
     partners: "Picking your collab squad",
+    taste: "Reading their taste DNA",
     score: "Scoring the demand",
     plan: "Building your game plan",
   }[key];
+}
+
+/** One entity in a cross-domain taste profile. */
+export interface TasteItem {
+  name: string;
+  affinity: number;
+  imageUrl?: string;
+}
+
+/** A domain of the customer's taste (films, shows, games…) with its top matches. */
+export interface TasteDomain {
+  key: string;
+  label: string;
+  emoji: string;
+  items: TasteItem[];
 }
 
 export interface AgentStep {
@@ -137,6 +153,8 @@ export interface HustleReport {
   neighbourhoods: NeighbourhoodDemand[];
   comparableBrands: Pick[];
   partners: Pick[];
+  /** Cross-domain taste profile of the target customer (Qloo's signature strength). */
+  tasteDNA: TasteDomain[];
   plan: LaunchPlan;
   steps: AgentStep[];
   calls: QlooCallRecord[];

@@ -163,5 +163,6 @@ function summarise(market: MarketResult) {
       .slice(0, 8)
       .map((n) => ({ name: n.name, affinity: pct(n.affinity), heatmapCells: n.cells })),
     partners: market.partners.slice(0, 10).map((p) => ({ name: p.name, kind: p.kind, affinity: pct(p.affinity) })),
+    alsoLove: market.tasteDNA.map((d) => ({ domain: d.label, top: d.items.slice(0, 3).map((i) => i.name) })),
   };
 }

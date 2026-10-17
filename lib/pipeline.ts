@@ -13,6 +13,7 @@ import {
   type NeighbourhoodDemand,
   type QlooCallRecord,
   type QlooEntity,
+  type QlooEntityType,
   type QlooParams,
   type QlooResult,
   type QlooTag,
@@ -26,6 +27,7 @@ import type {
   Pick,
   PickKind,
   StepKey,
+  TasteDomain,
 } from "./report";
 import { audience as audienceConfig, stepTitle } from "./report";
 import { BENCHMARK } from "./benchmark";
@@ -153,8 +155,17 @@ export interface MarketResult {
   comparableBrands: Pick[];
   neighbourhoods: NeighbourhoodDemand[];
   partners: Pick[];
+  tasteDNA: TasteDomain[];
   heatmapCells: number;
 }
+
+/** Cross-domain taste: what else the target customer loves, beyond the idea itself. */
+const TASTE_DOMAINS: { type: QlooEntityType; key: string; label: string; emoji: string }[] = [
+  { type: "urn:entity:movie", key: "movie", label: "Films", emoji: "🎬" },
+  { type: "urn:entity:tv_show", key: "tv", label: "Shows", emoji: "📺" },
+  { type: "urn:entity:video_game", key: "game", label: "Games", emoji: "🎮" },
+  { type: "urn:entity:book", key: "book", label: "Reads", emoji: "📚" },
+];
 
 function toPick(entity: QlooEntity, kind: PickKind): Pick {
   return {
@@ -296,8 +307,47 @@ export async function analyzeMarket(run: Run, tagIds: string[], brandIds: string
     return picks;
   })();
 
-  const [comparableBrands, loc, partnerPicks] = await Promise.all([audience, location, partners]);
-  return { comparableBrands, neighbourhoods: loc.hoods, partners: partnerPicks, heatmapCells: loc.cells };
+  // Taste DNA: what else this customer loves, across films, shows, games and books.
+  const tasteDNA = (async (): Promise<TasteDomain[]> => {
+    const results = await Promise.all(
+      TASTE_DOMAINS.map((d) =>
+        firstWithResults(
+          run,
+          [{ params: { "filter.type": d.type, ...full, take: 5 } }, { params: { "filter.type": d.type, ...tagsOnly, take: 5 } }],
+          entities,
+        ).then((r) => ({ d, r })),
+      ),
+    );
+    const domains = results
+      .map(({ d, r }) => ({
+        key: d.key,
+        label: d.label,
+        emoji: d.emoji,
+        items: (r.data?.results.entities ?? []).slice(0, 4).map((e) => ({
+          name: e.name,
+          affinity: e.query?.affinity ?? e.popularity,
+          imageUrl: e.properties?.image?.url,
+        })),
+      }))
+      .filter((d) => d.items.length > 0);
+    run.step(
+      "taste",
+      domains.length
+        ? `Mapped their taste across ${domains.map((d) => d.label.toLowerCase()).join(", ")}.`
+        : "No cross-domain taste data for this one.",
+      results.flatMap(({ r }) => r.indexes),
+    );
+    return domains;
+  })();
+
+  const [comparableBrands, loc, partnerPicks, dna] = await Promise.all([audience, location, partners, tasteDNA]);
+  return {
+    comparableBrands,
+    neighbourhoods: loc.hoods,
+    partners: partnerPicks,
+    tasteDNA: dna,
+    heatmapCells: loc.cells,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -398,6 +448,7 @@ export function assembleReport(
     neighbourhoods: parts.market.neighbourhoods,
     comparableBrands: parts.market.comparableBrands,
     partners: parts.market.partners,
+    tasteDNA: parts.market.tasteDNA,
     plan: parts.plan,
     steps: run.steps,
     calls: run.calls,

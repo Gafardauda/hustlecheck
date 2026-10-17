@@ -1,7 +1,8 @@
-import type { HustleReport, Pick } from "@/lib/report";
+import { audience, type HustleReport, type Pick } from "@/lib/report";
 import { FORMULA_TEXT } from "@/lib/score";
 import NeighbourhoodMap from "./NeighbourhoodMap";
 import PulseScoreHero from "./PulseScoreHero";
+import TasteDNA from "./TasteDNA";
 import { AffinityBar, Card, CardTitle, KindBadge } from "./ui";
 
 export default function Scorecard({ report }: { report: HustleReport }) {
@@ -26,6 +27,12 @@ export default function Scorecard({ report }: { report: HustleReport }) {
           ))}
         </ul>
       </Card>
+
+      {report.tasteDNA.length > 0 && (
+        <div className="lg:col-span-5">
+          <TasteDNA domains={report.tasteDNA} crowd={audience(report.input.audience).crowd} />
+        </div>
+      )}
 
       <Card className="lg:col-span-5">
         <CardTitle hint={`The areas of ${report.input.city} most into your idea. Brighter = more demand.`}>

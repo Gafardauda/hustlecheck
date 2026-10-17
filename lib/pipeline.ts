@@ -28,6 +28,7 @@ import type {
   StepKey,
 } from "./report";
 import { stepTitle } from "./report";
+import { BENCHMARK } from "./benchmark";
 import { computePulseScore, computeSubScores } from "./score";
 
 const GEN_Z_AGE = "24_and_younger";
@@ -401,14 +402,6 @@ export function assembleReport(
     plan: parts.plan,
     steps: run.steps,
     calls: run.calls,
-    benchmark: {
-      illustrative: true,
-      rows: [
-        { metric: "Names real local places", qloo: 92, llmOnly: 41 },
-        { metric: "Gen Z-specific picks", qloo: 88, llmOnly: 52 },
-        { metric: "Ranks neighbourhoods", qloo: 95, llmOnly: 30 },
-        { metric: "Cites evidence", qloo: 100, llmOnly: 12 },
-      ],
-    },
+    benchmark: BENCHMARK,
   };
 }

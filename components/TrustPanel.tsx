@@ -9,8 +9,11 @@ const QLOO = "var(--color-series-qloo)";
 const LLM = "var(--color-series-llm)";
 
 export default function TrustPanel({ report }: { report: HustleReport }) {
-  const { rows, illustrative } = report.benchmark;
+  const { rows, illustrative, generatedAt, ideas, cities, method } = report.benchmark;
   const liveCalls = report.calls.filter((c) => !c.mock).length;
+  const ranAt = generatedAt
+    ? new Date(generatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+    : null;
 
   return (
     <div className="grid gap-5">
@@ -50,10 +53,18 @@ export default function TrustPanel({ report }: { report: HustleReport }) {
         <CardTitle hint="Share of answers that pass each check, HustlePulse (Qloo + AI) vs the same AI with no Qloo data.">
           Qloo vs LLM-only
         </CardTitle>
-        {illustrative && (
+        {illustrative ? (
           <p className="mb-4 rounded-lg border border-violet-soft/40 bg-panel-2 px-3 py-2 text-xs text-violet-soft">
-            Illustrative numbers. The real benchmark on 20 sample hustle ideas is coming before launch.
+            Illustrative numbers. The real benchmark is coming before launch.
           </p>
+        ) : (
+          method && (
+            <p className="mb-4 rounded-lg border border-line bg-panel-2 px-3 py-2 text-xs text-muted">
+              {method}
+              {ideas && cities ? ` Measured on ${ideas} ideas across ${cities} cities` : ""}
+              {ranAt ? ` on ${ranAt}` : ""}.
+            </p>
+          )
         )}
         <div className="mb-3 flex gap-5 text-sm">
           <LegendItem color={QLOO} label="With Qloo" />

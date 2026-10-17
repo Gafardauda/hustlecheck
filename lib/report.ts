@@ -87,6 +87,18 @@ export interface BenchmarkRow {
   llmOnly: number;
 }
 
+export interface Benchmark {
+  rows: BenchmarkRow[];
+  /** True = placeholder numbers; false = measured results from the benchmark run. */
+  illustrative: boolean;
+  /** Present when measured: how and when the benchmark was run. */
+  generatedAt?: string;
+  ideas?: number;
+  cities?: number;
+  model?: string;
+  method?: string;
+}
+
 export interface HustleReport {
   /** Share ID, set once the report is saved (see lib/store.ts). */
   id?: string;
@@ -109,7 +121,7 @@ export interface HustleReport {
   plan: LaunchPlan;
   steps: AgentStep[];
   calls: QlooCallRecord[];
-  benchmark: { rows: BenchmarkRow[]; illustrative: boolean };
+  benchmark: Benchmark;
 }
 
 /** Events streamed from /api/check to the browser, one JSON object per line. */

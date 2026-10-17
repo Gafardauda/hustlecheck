@@ -1,0 +1,31 @@
+{
+  "generatedAt": "2026-10-17T10:29:37.619Z",
+  "ideas": 10,
+  "cities": 9,
+  "model": "gemini-3.5-flash-lite",
+  "agentRuns": 10,
+  "fallbackRuns": 0,
+  "method": "Each idea was run through HustlePulse (Qloo + AI) and the same AI with no Qloo. Picks were verified against Qloo's taste graph. Consistency is the overlap of picks across two runs of the same idea.",
+  "rows": [
+    {
+      "metric": "Names real local places",
+      "qloo": 100,
+      "llmOnly": 65
+    },
+    {
+      "metric": "On-target local artists",
+      "qloo": 50,
+      "llmOnly": 25
+    },
+    {
+      "metric": "Consistent across runs",
+      "qloo": 42,
+      "llmOnly": 27
+    },
+    {
+      "metric": "Cites evidence",
+      "qloo": 100,
+      "llmOnly": 3
+    }
+  ]
+}

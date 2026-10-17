@@ -13,15 +13,18 @@ export function CardTitle({ children, hint }: { children: React.ReactNode; hint?
   );
 }
 
-/** Horizontal 0–1 bar with the value printed beside it (single series, lime). */
+/** Horizontal 0–1 "match" bar with the percent printed beside it (single series, lime). */
 export function AffinityBar({ value, label }: { value: number; label?: string }) {
   const pct = Math.round(value * 100);
   return (
-    <div className="flex items-center gap-3" title={label ? `${label}: ${pct}/100 affinity` : undefined}>
-      <div className="h-2 flex-1 overflow-hidden rounded-full bg-line/70">
-        <div className="h-full rounded-full bg-lime" style={{ width: `${pct}%` }} />
+    <div className="flex items-center gap-3" title={label ? `${label}: ${pct}% match` : undefined}>
+      <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-line/70">
+        <div
+          className="h-full rounded-full bg-lime transition-[width] duration-700 ease-out"
+          style={{ width: `${pct}%` }}
+        />
       </div>
-      <span className="w-8 text-right font-mono text-sm tabular-nums text-fg">{pct}</span>
+      <span className="w-10 text-right font-mono text-sm tabular-nums text-fg">{pct}%</span>
     </div>
   );
 }

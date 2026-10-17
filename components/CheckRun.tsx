@@ -94,18 +94,16 @@ export default function CheckRun({ input }: { input: HustleInput }) {
         </div>
       ) : (
         <div className="max-w-2xl">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-bold">Agent at work</h2>
+          <div className="mb-1 flex items-center justify-between">
+            <h2 className="text-lg font-bold">Reading the vibe…</h2>
             {report && (
               <button onClick={() => setSkipReplay(true)} className="text-sm text-muted hover:text-fg">
                 Skip →
               </button>
             )}
           </div>
+          <p className="mb-4 text-sm text-muted">Checking real taste data for your idea. This takes a few seconds.</p>
           <AgentTrace titles={titles} steps={steps.slice(0, shown)} calls={calls} />
-          <p className="mt-4 text-xs text-faint">
-            Live Qloo and AI calls can take up to a minute. Every step above is a real request.
-          </p>
         </div>
       )}
     </div>

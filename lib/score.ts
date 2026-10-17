@@ -11,7 +11,7 @@ export const WEIGHTS: Record<SubScoreKey, number> = {
 };
 
 export const FORMULA_TEXT =
-  "PulseScore = 40% Audience fit + 35% Location demand + 25% Partner strength";
+  "Your score blends who wants it (40%), where they are (35%) and who you can collab with (25%).";
 
 const mean = (values: number[]) => (values.length ? values.reduce((s, v) => s + v, 0) / values.length : 0);
 const topN = (values: number[], n: number) => [...values].sort((a, b) => b - a).slice(0, n);
@@ -33,24 +33,24 @@ export function computeSubScores(input: {
   return [
     {
       key: "audience",
-      label: "Audience fit",
+      label: "Who wants it",
       score: audience,
       weight: WEIGHTS.audience,
-      evidence: `Mean Gen Z affinity of the top ${Math.min(5, input.brandAffinities.length)} comparable brands`,
+      evidence: "How much 18–24s love brands like yours",
     },
     {
       key: "location",
-      label: "Location demand",
+      label: "Where they are",
       score: location,
       weight: WEIGHTS.location,
-      evidence: `Mean heatmap affinity of the top ${Math.min(5, input.neighbourhoodAffinities.length)} neighbourhoods`,
+      evidence: "How hot the demand is in your best areas",
     },
     {
       key: "partners",
-      label: "Partner strength",
+      label: "Who to collab with",
       score: partners,
       weight: WEIGHTS.partners,
-      evidence: `Mean affinity of the top ${Math.min(5, input.partnerAffinities.length)} partner picks`,
+      evidence: "How well your collab picks match the vibe",
     },
   ];
 }
@@ -59,8 +59,18 @@ export function computePulseScore(subScores: SubScore[]): number {
   return Math.round(subScores.reduce((sum, s) => sum + s.score * s.weight, 0));
 }
 
-export function scoreVerdict(score: number): { label: string; tone: "strong" | "promising" | "weak" } {
-  if (score >= 75) return { label: "Strong pulse", tone: "strong" };
-  if (score >= 55) return { label: "Promising pulse", tone: "promising" };
-  return { label: "Weak pulse", tone: "weak" };
+export interface Verdict {
+  label: string;
+  emoji: string;
+  tone: "strong" | "promising" | "weak";
+  /** A hype line for the scorecard, naming the city. */
+  blurb: string;
+}
+
+export function scoreVerdict(score: number, city = "your city"): Verdict {
+  if (score >= 75)
+    return { label: "Strong pulse", emoji: "🔥", tone: "strong", blurb: `${city} is hungry for this.` };
+  if (score >= 55)
+    return { label: "Promising pulse", emoji: "⚡", tone: "promising", blurb: `Real demand in ${city} — play it smart.` };
+  return { label: "Early days", emoji: "🌱", tone: "weak", blurb: `Niche in ${city} for now. Start small and test.` };
 }

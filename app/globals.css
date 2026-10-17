@@ -26,9 +26,43 @@
 body {
   background: var(--color-ink);
   color: var(--color-fg);
+  /* Soft lime/violet glow fixed behind everything for depth. */
+  background-image:
+    radial-gradient(60rem 40rem at 15% -10%, color-mix(in oklab, var(--color-violet) 22%, transparent), transparent 70%),
+    radial-gradient(45rem 35rem at 100% 0%, color-mix(in oklab, var(--color-lime) 10%, transparent), transparent 65%);
+  background-attachment: fixed;
 }
 
 ::selection {
   background: var(--color-lime);
   color: var(--color-ink);
+}
+
+/* Lime→violet gradient text for headline accents. */
+.text-gradient {
+  background: linear-gradient(100deg, var(--color-lime), var(--color-violet-soft) 85%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Lime glow for the CTA and the score ring. */
+.glow-lime {
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-lime) 40%, transparent), 0 8px 40px -8px color-mix(in oklab, var(--color-lime) 55%, transparent);
+}
+
+@keyframes pulse-ring {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.015); }
+}
+.animate-pulse-ring { animation: pulse-ring 2.4s ease-in-out infinite; }
+
+@keyframes pop-in {
+  0% { opacity: 0; transform: translateY(8px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-pop-in { animation: pop-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-ring, .animate-pop-in { animation: none; }
 }

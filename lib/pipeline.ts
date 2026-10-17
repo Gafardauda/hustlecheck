@@ -141,7 +141,7 @@ export async function researchIdea(
   const unique = [...new Map(tags.map((t) => [t.id, t])).values()];
   run.step(
     "idea",
-    `Looked up ${keywords.map((k) => `“${k}”`).join(", ")} and found ${unique.length} Qloo taste tags, ${brands.length} comparable brands${artists.length ? ` and ${artists.length} local artists` : ""}.`,
+    `Matched ${keywords.map((k) => `“${k}”`).join(", ")} to ${unique.length} taste signals, ${brands.length} similar brands${artists.length ? ` and ${artists.length} local artists` : ""}.`,
     [...tagResults, ...brandResults, ...artistResults].map((r) => r.index),
   );
   return { tags: unique, brands, artists, emptyKeywords, missingBrands };
@@ -219,7 +219,7 @@ export async function analyzeMarket(run: Run, tagIds: string[], brandIds: string
       entities,
     );
     const picks = (r.data?.results.entities ?? []).slice(0, 5).map((e) => toPick(e, "brand"));
-    run.step("audience", `Scored ${picks.length} comparable brands for 18–24 year olds.`, r.indexes);
+    run.step("audience", `Checked how much 18–24s love ${picks.length} brands like yours.`, r.indexes);
     return picks;
   })();
 
@@ -249,8 +249,8 @@ export async function analyzeMarket(run: Run, tagIds: string[], brandIds: string
     run.step(
       "location",
       hoods.length
-        ? `Read ${heatmap.length} heatmap cells; ${hoods[0].name} over-indexes most.`
-        : `Qloo returned no neighbourhood-level signal for ${city}.`,
+        ? `Scanned ${heatmap.length} spots across ${city}. ${hoods[0].name} wants this most.`
+        : `No neighbourhood-level demand data for ${city} yet.`,
       r.indexes,
     );
     return { hoods, cells: heatmap.length };
@@ -291,7 +291,7 @@ export async function analyzeMarket(run: Run, tagIds: string[], brandIds: string
       .sort((a, b) => b.affinity - a.affinity);
     run.step(
       "partners",
-      `Ranked ${picks.length} artists, podcasts and ${city} venues by taste affinity.`,
+      `Lined up ${picks.length} artists, podcasts and ${city} venues to collab with.`,
       results.flatMap((r) => r.indexes),
     );
     return picks;
@@ -312,7 +312,7 @@ export function scoreMarket(run: Run, market: MarketResult) {
     partnerAffinities: market.partners.map((p) => p.affinity),
   });
   const pulseScore = computePulseScore(subScores);
-  run.step("score", `Weighted audience fit, location demand and partner strength into a score of ${pulseScore}.`);
+  run.step("score", `Added it all up — your PulseScore is ${pulseScore}.`);
   return { subScores, pulseScore };
 }
 

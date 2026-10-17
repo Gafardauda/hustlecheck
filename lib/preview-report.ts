@@ -48,7 +48,7 @@ export async function buildPreviewReport(run: Run): Promise<HustleReport> {
     (a, b) => Number(research.emptyKeywords.includes(a)) - Number(research.emptyKeywords.includes(b)),
   );
   const plan = templatePlan(run.input, market, ranked);
-  run.step("plan", "Built a launch plan from the Qloo results.");
+  run.step("plan", "Put together your game plan from the data.");
 
   return assembleReport(run, { source: "preview", market, score, plan, usedTagIds: tagIds });
 }

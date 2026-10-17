@@ -97,9 +97,9 @@ export default function PitchForm() {
       <button
         type="submit"
         disabled={tooShort || submitting}
-        className="mt-7 w-full rounded-xl bg-lime px-6 py-3.5 text-base font-bold text-ink transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
+        className="mt-7 w-full rounded-xl bg-lime px-7 py-4 text-base font-black text-ink transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 enabled:glow-lime sm:w-auto"
       >
-        {submitting ? "Starting the agent…" : "Check my hustle’s pulse →"}
+        {submitting ? "Reading the vibe…" : "Check my hustle →"}
       </button>
     </form>
   );

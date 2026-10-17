@@ -143,11 +143,11 @@ export async function runAgent(run: Run): Promise<HustleReport> {
       }),
     });
     plan = groundPlan(output, finalMarket, fallback);
-    run.step("plan", "Wrote a launch plan that cites the Qloo evidence.");
+    run.step("plan", "Mapped out your first moves — where, who and what to call it.");
   } catch (err) {
     console.error("Plan generation failed; using template", err);
     run.notes.push("The launch plan was built from a template because the AI writer was unavailable.");
-    run.step("plan", "Built a launch plan from the Qloo results.");
+    run.step("plan", "Put together your game plan from the data.");
   }
 
   return assembleReport(run, { source: "agent", model: GEMINI_MODEL, market: finalMarket, score, plan, usedTagIds });

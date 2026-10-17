@@ -56,12 +56,12 @@ export type StepKey = (typeof STEP_KEYS)[number];
 
 export function stepTitle(key: StepKey, city: string): string {
   return {
-    idea: "Understanding your idea",
-    audience: "Measuring Gen Z appetite",
-    location: `Mapping demand across ${city}`,
-    partners: "Finding collab partners",
-    score: "Calculating your PulseScore",
-    plan: "Writing your launch plan",
+    idea: "Getting your idea",
+    audience: "Checking who's into it",
+    location: `Finding your hotspots in ${city}`,
+    partners: "Picking your collab squad",
+    score: "Scoring the demand",
+    plan: "Building your game plan",
   }[key];
 }
 

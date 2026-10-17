@@ -64,7 +64,7 @@ export default function NeighbourhoodMap({ neighbourhoods }: { neighbourhoods: N
                 <span className="mr-2 font-mono text-faint">{i + 1}</span>
                 {n.name}
               </span>
-              <span className="text-xs text-faint">{n.cells} cells</span>
+              <span className="text-xs text-faint">{n.cells} spots</span>
             </div>
             <AffinityBar value={n.affinity} label={n.name} />
           </li>
@@ -99,10 +99,10 @@ function MapTooltip({ active, payload }: { active?: boolean; payload?: { payload
     <div className="rounded-lg border border-line bg-panel-2 px-3 py-2 text-sm shadow-lg">
       <p className="font-semibold">{n.name}</p>
       <p className="text-muted">
-        Affinity <span className="font-mono text-fg">{Math.round(n.affinity * 100)}</span> · peak{" "}
-        <span className="font-mono text-fg">{Math.round(n.peakAffinity * 100)}</span>
+        <span className="font-mono text-fg">{Math.round(n.affinity * 100)}%</span> match · peaks at{" "}
+        <span className="font-mono text-fg">{Math.round(n.peakAffinity * 100)}%</span>
       </p>
-      <p className="text-xs text-faint">{n.cells} heatmap cells</p>
+      <p className="text-xs text-faint">across {n.cells} spots</p>
     </div>
   );
 }

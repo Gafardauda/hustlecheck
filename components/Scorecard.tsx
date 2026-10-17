@@ -1,22 +1,23 @@
 import type { HustleReport, Pick } from "@/lib/report";
-import { FORMULA_TEXT, scoreVerdict } from "@/lib/score";
+import { FORMULA_TEXT } from "@/lib/score";
 import NeighbourhoodMap from "./NeighbourhoodMap";
+import PulseScoreHero from "./PulseScoreHero";
 import { AffinityBar, Card, CardTitle, KindBadge } from "./ui";
 
 export default function Scorecard({ report }: { report: HustleReport }) {
   return (
     <div className="grid gap-5 lg:grid-cols-5">
-      <Card className="lg:col-span-2">
-        <PulseScoreHero score={report.pulseScore} />
+      <Card className="animate-pop-in lg:col-span-2">
+        <PulseScoreHero score={report.pulseScore} city={report.input.city} />
       </Card>
       <Card className="lg:col-span-3">
-        <CardTitle hint={FORMULA_TEXT}>What drives the score</CardTitle>
+        <CardTitle hint={FORMULA_TEXT}>What makes up your score</CardTitle>
         <ul className="space-y-5">
           {report.subScores.map((s) => (
             <li key={s.key}>
               <div className="mb-1.5 flex items-baseline justify-between gap-3">
                 <span className="font-semibold">
-                  {s.label} <span className="text-xs font-normal text-faint">× {Math.round(s.weight * 100)}%</span>
+                  {s.label} <span className="text-xs font-normal text-faint">counts for {Math.round(s.weight * 100)}%</span>
                 </span>
               </div>
               <AffinityBar value={s.score / 100} label={s.label} />
@@ -27,26 +28,26 @@ export default function Scorecard({ report }: { report: HustleReport }) {
       </Card>
 
       <Card className="lg:col-span-5">
-        <CardTitle
-          hint={`Where Gen Z taste for your idea over-indexes in ${report.input.city}, from Qloo's heatmap. Brighter = stronger demand.`}
-        >
-          Neighbourhood demand
+        <CardTitle hint={`The areas of ${report.input.city} most into your idea. Brighter = more demand.`}>
+          Where the demand is hottest
         </CardTitle>
         <NeighbourhoodMap neighbourhoods={report.neighbourhoods} />
       </Card>
 
       <Card className="lg:col-span-2">
-        <CardTitle hint="Brands your future customers already love (Gen Z affinity).">Comparable brands</CardTitle>
+        <CardTitle hint="Brands your future customers already love.">Brands they already love</CardTitle>
         <PickList picks={report.comparableBrands} />
       </Card>
       <Card className="lg:col-span-3">
-        <CardTitle hint="Artists, podcasts and venues your audience over-indexes on.">Partner picks</CardTitle>
+        <CardTitle hint="Artists, podcasts and venues your crowd is into — reach out to these.">
+          Your collab squad
+        </CardTitle>
         <PickList picks={report.partners.slice(0, 6)} showKind />
       </Card>
 
       {report.tags.length > 0 && (
         <p className="text-xs text-faint lg:col-span-5">
-          Qloo taste tags used:{" "}
+          We matched your idea to:{" "}
           {report.tags.map((t) => (
             <code key={t.id} className="mr-2 rounded bg-panel px-1.5 py-0.5 text-violet-soft">
               {t.name}
@@ -54,49 +55,6 @@ export default function Scorecard({ report }: { report: HustleReport }) {
           ))}
         </p>
       )}
-    </div>
-  );
-}
-
-function PulseScoreHero({ score }: { score: number }) {
-  const verdict = scoreVerdict(score);
-  const r = 70;
-  const circumference = 2 * Math.PI * r;
-  return (
-    <div className="flex flex-col items-center text-center">
-      <p className="text-sm font-semibold uppercase tracking-widest text-muted">PulseScore</p>
-      <div className="relative mt-3">
-        <svg width="180" height="180" viewBox="0 0 180 180" role="img" aria-label={`PulseScore ${score} out of 100`}>
-          <circle cx="90" cy="90" r={r} fill="none" stroke="var(--color-line)" strokeWidth="12" />
-          <circle
-            cx="90"
-            cy="90"
-            r={r}
-            fill="none"
-            stroke="var(--color-lime)"
-            strokeWidth="12"
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={circumference * (1 - score / 100)}
-            transform="rotate(-90 90 90)"
-          />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-6xl font-black tabular-nums">{score}</span>
-          <span className="text-xs text-faint">out of 100</span>
-        </div>
-      </div>
-      <p
-        className={`mt-4 rounded-full px-3 py-1 text-sm font-bold ${
-          verdict.tone === "strong"
-            ? "bg-lime text-ink"
-            : verdict.tone === "promising"
-              ? "bg-violet text-fg"
-              : "border border-line text-muted"
-        }`}
-      >
-        {verdict.label}
-      </p>
     </div>
   );
 }

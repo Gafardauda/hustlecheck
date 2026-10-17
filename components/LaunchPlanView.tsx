@@ -37,7 +37,7 @@ export default function LaunchPlanView({ report }: { report: HustleReport }) {
       </Card>
 
       <Card>
-        <CardTitle hint="Ranked by Qloo heatmap affinity.">Where to launch</CardTitle>
+        <CardTitle hint="Ranked by how much each area wants your idea.">Where to launch</CardTitle>
         <ol className="space-y-4">
           {plan.where.map((w, i) => (
             <li key={w.neighbourhood} className="flex gap-3">
@@ -54,7 +54,7 @@ export default function LaunchPlanView({ report }: { report: HustleReport }) {
       </Card>
 
       <Card>
-        <CardTitle hint="Highest-affinity partners from Qloo, one of each kind.">Who to collab with</CardTitle>
+        <CardTitle hint="The people and places your crowd is most into.">Who to collab with</CardTitle>
         <ul className="space-y-4">
           {plan.collabs.map((c) => (
             <li key={c.name}>

@@ -50,8 +50,8 @@ export default function TrustPanel({ report }: { report: HustleReport }) {
       </Card>
 
       <Card>
-        <CardTitle hint="Share of answers that pass each check, HustlePulse (Qloo + AI) vs the same AI with no Qloo data.">
-          Qloo vs LLM-only
+        <CardTitle hint="We ran the same ideas with Qloo and without it. Higher bars = more trustworthy answers.">
+          Does Qloo actually help?
         </CardTitle>
         {illustrative ? (
           <p className="mb-4 rounded-lg border border-violet-soft/40 bg-panel-2 px-3 py-2 text-xs text-violet-soft">
@@ -67,8 +67,8 @@ export default function TrustPanel({ report }: { report: HustleReport }) {
           )
         )}
         <div className="mb-3 flex gap-5 text-sm">
-          <LegendItem color={QLOO} label="With Qloo" />
-          <LegendItem color={LLM} label="LLM only" />
+          <LegendItem color={QLOO} label="HustlePulse (with Qloo)" />
+          <LegendItem color={LLM} label="AI guessing alone" />
         </div>
         <div className="h-72">
           <ResponsiveContainer width="100%" height="100%">
@@ -100,10 +100,10 @@ export default function TrustPanel({ report }: { report: HustleReport }) {
                 }}
                 formatter={(v) => `${v}%`}
               />
-              <Bar dataKey="qloo" name="With Qloo" fill={QLOO} radius={[0, 4, 4, 0]} barSize={12} isAnimationActive={false}>
+              <Bar dataKey="qloo" name="HustlePulse (with Qloo)" fill={QLOO} radius={[0, 4, 4, 0]} barSize={12} isAnimationActive={false}>
                 <LabelList dataKey="qloo" position="right" fill="var(--color-fg)" fontSize={11} formatter={(v) => `${v}%`} />
               </Bar>
-              <Bar dataKey="llmOnly" name="LLM only" fill={LLM} radius={[0, 4, 4, 0]} barSize={12} isAnimationActive={false}>
+              <Bar dataKey="llmOnly" name="AI guessing alone" fill={LLM} radius={[0, 4, 4, 0]} barSize={12} isAnimationActive={false}>
                 <LabelList dataKey="llmOnly" position="right" fill="var(--color-muted)" fontSize={11} formatter={(v) => `${v}%`} />
               </Bar>
             </BarChart>
@@ -112,15 +112,22 @@ export default function TrustPanel({ report }: { report: HustleReport }) {
       </Card>
 
       <Card>
-        <CardTitle
-          hint={`${report.calls.length} Qloo API calls made for this check${
-            liveCalls ? ` (${liveCalls} live)` : " (sample data in preview mode)"
-          }. Every number on the scorecard comes from these.`}
-        >
-          Every Qloo call
-        </CardTitle>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[520px] text-left text-sm">
+        <details className="group">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+            <span>
+              <span className="text-base font-bold">Peek under the hood</span>
+              <span className="ml-2 text-sm text-muted">
+                {report.calls.length} Qloo calls{liveCalls ? ` · ${liveCalls} live` : " · sample data"}
+              </span>
+            </span>
+            <span className="text-sm text-violet-soft group-open:hidden">Show →</span>
+            <span className="hidden text-sm text-violet-soft group-open:inline">Hide</span>
+          </summary>
+          <p className="mb-4 mt-2 text-sm text-muted">
+            For the curious: every real request we made to Qloo. Every number on your scorecard traces back to these.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[520px] text-left text-sm">
             <thead className="text-xs uppercase tracking-wide text-faint">
               <tr className="border-b border-line">
                 <th className="py-2 pr-3 font-semibold">#</th>
@@ -144,9 +151,10 @@ export default function TrustPanel({ report }: { report: HustleReport }) {
                   </td>
                 </tr>
               ))}
-            </tbody>
-          </table>
-        </div>
+              </tbody>
+            </table>
+          </div>
+        </details>
       </Card>
     </div>
   );

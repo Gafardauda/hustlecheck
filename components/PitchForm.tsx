@@ -55,17 +55,17 @@ export default function PitchForm() {
         ))}
       </div>
 
-      <div className="mt-6 grid gap-5 sm:grid-cols-2">
+      <div className="mt-6 space-y-5">
         <fieldset>
           <legend className="text-sm font-semibold">City</legend>
-          <div className="mt-2 flex gap-2">
+          <div className="mt-2 flex flex-wrap gap-2">
             {CITIES.map((c) => (
               <button
                 key={c}
                 type="button"
                 aria-pressed={city === c}
                 onClick={() => setCity(c)}
-                className={`flex-1 rounded-xl border px-3 py-2.5 text-sm font-medium transition ${
+                className={`rounded-xl border px-4 py-2.5 text-sm font-medium transition ${
                   city === c ? "border-lime bg-lime text-ink" : "border-line text-muted hover:text-fg"
                 }`}
               >
@@ -74,7 +74,7 @@ export default function PitchForm() {
             ))}
           </div>
         </fieldset>
-        <div>
+        <div className="sm:max-w-xs">
           <label htmlFor="budget" className="text-sm font-semibold">
             Starting budget <span className="font-normal text-faint">(optional)</span>
           </label>

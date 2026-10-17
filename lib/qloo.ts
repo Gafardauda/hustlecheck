@@ -394,9 +394,81 @@ export const CITY_NEIGHBOURHOODS: Record<string, { name: string; lat: number; lo
     { name: "Ajah", lat: 6.4698, lon: 3.5852, bias: 0.62 },
     { name: "Gbagada", lat: 6.5527, lon: 3.3895, bias: 0.58 },
     { name: "Maryland", lat: 6.5706, lon: 3.3654, bias: 0.55 },
+    { name: "Magodo", lat: 6.615, lon: 3.37, bias: 0.6 },
+    { name: "Oshodi", lat: 6.555, lon: 3.348, bias: 0.5 },
+    { name: "Ketu", lat: 6.59, lon: 3.383, bias: 0.48 },
     { name: "Apapa", lat: 6.4489, lon: 3.3594, bias: 0.45 },
     { name: "Festac", lat: 6.4669, lon: 3.2836, bias: 0.5 },
     { name: "Ikorodu", lat: 6.6194, lon: 3.5105, bias: 0.4 },
+  ],
+  abuja: [
+    { name: "Wuse 2", lat: 9.0833, lon: 7.4667, bias: 0.92 },
+    { name: "Maitama", lat: 9.087, lon: 7.495, bias: 0.85 },
+    { name: "Garki", lat: 9.033, lon: 7.489, bias: 0.75 },
+    { name: "Asokoro", lat: 9.037, lon: 7.523, bias: 0.7 },
+    { name: "Central Business District", lat: 9.058, lon: 7.486, bias: 0.72 },
+    { name: "Gwarinpa", lat: 9.11, lon: 7.408, bias: 0.8 },
+    { name: "Wuye", lat: 9.056, lon: 7.448, bias: 0.65 },
+    { name: "Jabi", lat: 9.073, lon: 7.421, bias: 0.78 },
+    { name: "Utako", lat: 9.068, lon: 7.436, bias: 0.7 },
+    { name: "Lugbe", lat: 8.985, lon: 7.38, bias: 0.5 },
+    { name: "Lokogoma", lat: 8.987, lon: 7.429, bias: 0.55 },
+  ],
+  ibadan: [
+    { name: "Bodija", lat: 7.43, lon: 3.91, bias: 0.88 },
+    { name: "University of Ibadan", lat: 7.44, lon: 3.9, bias: 0.82 },
+    { name: "Agodi", lat: 7.4, lon: 3.91, bias: 0.72 },
+    { name: "Mokola", lat: 7.4, lon: 3.89, bias: 0.7 },
+    { name: "Sango", lat: 7.43, lon: 3.88, bias: 0.72 },
+    { name: "Jericho", lat: 7.39, lon: 3.87, bias: 0.7 },
+    { name: "Dugbe", lat: 7.38, lon: 3.88, bias: 0.72 },
+    { name: "Ring Road", lat: 7.35, lon: 3.88, bias: 0.68 },
+    { name: "Challenge", lat: 7.35, lon: 3.87, bias: 0.6 },
+    { name: "Akobo", lat: 7.46, lon: 3.94, bias: 0.6 },
+    { name: "Apata", lat: 7.34, lon: 3.85, bias: 0.55 },
+    { name: "Ojoo", lat: 7.48, lon: 3.92, bias: 0.5 },
+  ],
+  accra: [
+    { name: "Osu", lat: 5.556, lon: -0.1823, bias: 0.95 },
+    { name: "East Legon", lat: 5.6359, lon: -0.1617, bias: 0.85 },
+    { name: "Labone", lat: 5.5686, lon: -0.1723, bias: 0.75 },
+    { name: "Cantonments", lat: 5.572, lon: -0.175, bias: 0.78 },
+    { name: "Accra Central", lat: 5.5502, lon: -0.2174, bias: 0.7 },
+    { name: "Airport Residential", lat: 5.6047, lon: -0.1781, bias: 0.6 },
+    { name: "Madina", lat: 5.6681, lon: -0.1659, bias: 0.6 },
+    { name: "Spintex", lat: 5.635, lon: -0.105, bias: 0.62 },
+    { name: "Achimota", lat: 5.619, lon: -0.227, bias: 0.55 },
+    { name: "Adabraka", lat: 5.562, lon: -0.211, bias: 0.6 },
+    { name: "Dansoman", lat: 5.536, lon: -0.255, bias: 0.5 },
+    { name: "Tema", lat: 5.6698, lon: -0.0166, bias: 0.45 },
+  ],
+  nairobi: [
+    { name: "Westlands", lat: -1.266, lon: 36.803, bias: 0.92 },
+    { name: "Kilimani", lat: -1.29, lon: 36.785, bias: 0.9 },
+    { name: "Nairobi CBD", lat: -1.2833, lon: 36.8172, bias: 0.75 },
+    { name: "Lavington", lat: -1.279, lon: 36.766, bias: 0.75 },
+    { name: "Hurlingham", lat: -1.296, lon: 36.79, bias: 0.72 },
+    { name: "Parklands", lat: -1.262, lon: 36.816, bias: 0.72 },
+    { name: "Karen", lat: -1.319, lon: 36.706, bias: 0.7 },
+    { name: "Gigiri", lat: -1.234, lon: 36.813, bias: 0.6 },
+    { name: "South B", lat: -1.309, lon: 36.837, bias: 0.6 },
+    { name: "South C", lat: -1.319, lon: 36.828, bias: 0.6 },
+    { name: "Eastleigh", lat: -1.273, lon: 36.849, bias: 0.55 },
+    { name: "Kasarani", lat: -1.22, lon: 36.898, bias: 0.5 },
+  ],
+  "cape town": [
+    { name: "City Bowl", lat: -33.9249, lon: 18.4241, bias: 0.85 },
+    { name: "Woodstock", lat: -33.927, lon: 18.445, bias: 0.85 },
+    { name: "Sea Point", lat: -33.92, lon: 18.384, bias: 0.8 },
+    { name: "Observatory", lat: -33.938, lon: 18.465, bias: 0.8 },
+    { name: "Gardens", lat: -33.932, lon: 18.411, bias: 0.78 },
+    { name: "Green Point", lat: -33.906, lon: 18.41, bias: 0.72 },
+    { name: "Claremont", lat: -33.983, lon: 18.465, bias: 0.72 },
+    { name: "Camps Bay", lat: -33.95, lon: 18.378, bias: 0.7 },
+    { name: "Newlands", lat: -33.977, lon: 18.452, bias: 0.65 },
+    { name: "Mowbray", lat: -33.947, lon: 18.472, bias: 0.6 },
+    { name: "Bellville", lat: -33.902, lon: 18.63, bias: 0.5 },
+    { name: "Khayelitsha", lat: -34.04, lon: 18.676, bias: 0.45 },
   ],
   london: [
     { name: "Shoreditch", lat: 51.5265, lon: -0.0798, bias: 0.95 },
@@ -404,21 +476,60 @@ export const CITY_NEIGHBOURHOODS: Record<string, { name: string; lat: number; lo
     { name: "Brixton", lat: 51.4613, lon: -0.1156, bias: 0.88 },
     { name: "Camden", lat: 51.539, lon: -0.1426, bias: 0.85 },
     { name: "Dalston", lat: 51.5463, lon: -0.0753, bias: 0.82 },
+    { name: "Hackney", lat: 51.545, lon: -0.0553, bias: 0.82 },
     { name: "Soho", lat: 51.5136, lon: -0.1365, bias: 0.8 },
+    { name: "Islington", lat: 51.5362, lon: -0.1033, bias: 0.78 },
+    { name: "Notting Hill", lat: 51.516, lon: -0.205, bias: 0.72 },
+    { name: "Clapham", lat: 51.4627, lon: -0.1382, bias: 0.7 },
+    { name: "Greenwich", lat: 51.4826, lon: -0.0077, bias: 0.68 },
     { name: "Stratford", lat: 51.5416, lon: -0.0034, bias: 0.65 },
     { name: "Croydon", lat: 51.3762, lon: -0.0982, bias: 0.55 },
     { name: "Kensington", lat: 51.4991, lon: -0.1938, bias: 0.45 },
   ],
-  accra: [
-    { name: "Osu", lat: 5.556, lon: -0.1823, bias: 0.95 },
-    { name: "East Legon", lat: 5.6359, lon: -0.1617, bias: 0.85 },
-    { name: "Labone", lat: 5.5686, lon: -0.1723, bias: 0.75 },
-    { name: "Accra Central", lat: 5.5502, lon: -0.2174, bias: 0.7 },
-    { name: "Madina", lat: 5.6681, lon: -0.1659, bias: 0.6 },
-    { name: "Airport Residential", lat: 5.6047, lon: -0.1781, bias: 0.6 },
-    { name: "Tema", lat: 5.6698, lon: -0.0166, bias: 0.45 },
+  "new york": [
+    { name: "Williamsburg", lat: 40.7081, lon: -73.9571, bias: 0.92 },
+    { name: "SoHo", lat: 40.7233, lon: -74.003, bias: 0.9 },
+    { name: "Bushwick", lat: 40.6944, lon: -73.9213, bias: 0.85 },
+    { name: "Lower East Side", lat: 40.715, lon: -73.9843, bias: 0.85 },
+    { name: "East Village", lat: 40.7265, lon: -73.9815, bias: 0.82 },
+    { name: "Chelsea", lat: 40.7465, lon: -74.0014, bias: 0.8 },
+    { name: "Harlem", lat: 40.8116, lon: -73.9465, bias: 0.8 },
+    { name: "Greenpoint", lat: 40.7304, lon: -73.951, bias: 0.78 },
+    { name: "DUMBO", lat: 40.7033, lon: -73.9881, bias: 0.78 },
+    { name: "Astoria", lat: 40.7644, lon: -73.9235, bias: 0.75 },
+    { name: "Upper West Side", lat: 40.787, lon: -73.9754, bias: 0.65 },
+    { name: "Flushing", lat: 40.7675, lon: -73.8331, bias: 0.6 },
+  ],
+  toronto: [
+    { name: "Queen West", lat: 43.6468, lon: -79.4119, bias: 0.9 },
+    { name: "Kensington Market", lat: 43.6545, lon: -79.4005, bias: 0.9 },
+    { name: "Liberty Village", lat: 43.6378, lon: -79.42, bias: 0.82 },
+    { name: "The Annex", lat: 43.667, lon: -79.407, bias: 0.8 },
+    { name: "Distillery District", lat: 43.6503, lon: -79.3596, bias: 0.78 },
+    { name: "Downtown Core", lat: 43.649, lon: -79.3817, bias: 0.75 },
+    { name: "Leslieville", lat: 43.664, lon: -79.334, bias: 0.75 },
+    { name: "Yorkville", lat: 43.671, lon: -79.393, bias: 0.72 },
+    { name: "Greektown", lat: 43.6775, lon: -79.349, bias: 0.7 },
+    { name: "North York", lat: 43.7615, lon: -79.4111, bias: 0.6 },
+    { name: "Scarborough", lat: 43.7731, lon: -79.2578, bias: 0.5 },
+    { name: "Etobicoke", lat: 43.6205, lon: -79.5132, bias: 0.5 },
   ],
 };
+
+/**
+ * How each city is sent to Qloo's filter.location.query. Most resolve fine by plain
+ * name; a few are ambiguous (plain "New York" → the state; plain "Ibadan" → the wrong
+ * locality), so they get a qualified query here.
+ */
+const CITY_QLOO_QUERY: Record<string, string> = {
+  ibadan: "Ibadan, Nigeria",
+  "new york": "New York City",
+};
+
+/** The location string to send to Qloo for a given display city name. */
+export function cityQuery(city: string): string {
+  return CITY_QLOO_QUERY[city.toLowerCase().trim()] ?? city;
+}
 
 export interface NeighbourhoodDemand {
   name: string;
@@ -556,8 +667,10 @@ function mockInsights(params: Record<string, string>): QlooInsightsResponse {
 
   if (type === "urn:heatmap") {
     // Live Qloo returns hundreds of unnamed grid cells; mock a small grid around each neighbourhood.
-    const cityKey = (params["filter.location.query"] ?? "lagos").toLowerCase().split(",")[0].trim();
-    const hoods = CITY_NEIGHBOURHOODS[cityKey] ?? CITY_NEIGHBOURHOODS.lagos;
+    // Match the query ("new york city", "ibadan, nigeria", …) to a known city key.
+    const raw = (params["filter.location.query"] ?? "lagos").toLowerCase();
+    const cityKey = Object.keys(CITY_NEIGHBOURHOODS).find((k) => raw.includes(k)) ?? "lagos";
+    const hoods = CITY_NEIGHBOURHOODS[cityKey];
     const heatmap: QlooHeatmapCell[] = hoods
       .flatMap((h) =>
         Array.from({ length: 9 }, (_, i) => {

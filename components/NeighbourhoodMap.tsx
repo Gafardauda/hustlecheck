@@ -17,8 +17,8 @@ export default function NeighbourhoodMap({ neighbourhoods }: { neighbourhoods: N
   const min = Math.min(...values);
   const max = Math.max(...values);
   const norm = (v: number) => (max === min ? 1 : (v - min) / (max - min));
-  const top3 = new Set(neighbourhoods.slice(0, 3).map((n) => n.name));
-  const data = neighbourhoods.map((n) => ({ ...n, label: top3.has(n.name) ? n.name : "" }));
+  const topLabelled = new Set(neighbourhoods.slice(0, 5).map((n) => n.name));
+  const data = neighbourhoods.map((n) => ({ ...n, label: topLabelled.has(n.name) ? n.name : "" }));
 
   return (
     <div className="grid gap-6 md:grid-cols-5">
@@ -57,7 +57,7 @@ export default function NeighbourhoodMap({ neighbourhoods }: { neighbourhoods: N
       </div>
 
       <ol className="space-y-3 md:col-span-2">
-        {neighbourhoods.slice(0, 6).map((n, i) => (
+        {neighbourhoods.slice(0, 8).map((n, i) => (
           <li key={n.name}>
             <div className="mb-1 flex items-baseline justify-between text-sm">
               <span className="font-semibold">

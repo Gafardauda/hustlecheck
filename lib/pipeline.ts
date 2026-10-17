@@ -5,6 +5,7 @@
  * A Run collects every Qloo call and streams steps/calls to the browser as they happen.
  */
 import {
+  cityQuery,
   findTags,
   getInsights,
   labelNeighbourhoods,
@@ -189,6 +190,8 @@ async function firstWithResults(
 
 export async function analyzeMarket(run: Run, tagIds: string[], brandIds: string[]): Promise<MarketResult> {
   const city = run.input.city;
+  // What we send to Qloo as the location (some city names are ambiguous); display stays `city`.
+  const locationQuery = cityQuery(city);
   const tags = tagIds.filter((id) => run.knownTags.has(id)).slice(0, 4);
   const brands = brandIds.filter((id) => run.knownBrands.has(id)).slice(0, 4);
   const placeTags = tags.filter((id) => run.knownTags.get(id)?.parents?.some((p) => p.type === "urn:entity:place"));
@@ -220,7 +223,7 @@ export async function analyzeMarket(run: Run, tagIds: string[], brandIds: string
   })();
 
   const location = (async () => {
-    const heat = { "filter.type": "urn:heatmap", "filter.location.query": city };
+    const heat = { "filter.type": "urn:heatmap", "filter.location.query": locationQuery };
     const r = await firstWithResults(
       run,
       [
@@ -255,13 +258,13 @@ export async function analyzeMarket(run: Run, tagIds: string[], brandIds: string
   const partners = (async () => {
     // Artists and podcasts aren't tied to a city, so bias them with Qloo's location signal,
     // and anchor artists on the local artists the agent named (if Qloo found them).
-    const local = { "signal.location.query": city };
+    const local = { "signal.location.query": locationQuery };
     const anchors = [...run.knownArtists.keys()].slice(0, 2);
     const artistSignal: QlooParams = anchors.length ? { ...tagsOnly, ...local, "signal.interests.entities": anchors } : { ...full, ...local };
     const kinds: [PickKind, QlooParams, QlooParams][] = [
       ["artist", { "filter.type": "urn:entity:artist", take: 4 }, artistSignal],
       ["podcast", { "filter.type": "urn:entity:podcast", take: 3 }, { ...full, ...local }],
-      ["place", { "filter.type": "urn:entity:place", "filter.location.query": city, take: 4 }, full],
+      ["place", { "filter.type": "urn:entity:place", "filter.location.query": locationQuery, take: 4 }, full],
     ];
     const anchorNames = new Set(anchors.map((id) => run.knownArtists.get(id)!.name));
     const results = await Promise.all(
@@ -334,15 +337,15 @@ export function templatePlan(input: HustleInput, market: MarketResult, keywords:
   const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
   const k1 = cap(keywords[0] ?? "Hustle");
   const k2 = cap(keywords[1] ?? "Club");
-  const top = market.neighbourhoods.slice(0, 3);
+  const top = market.neighbourhoods.slice(0, 5);
   const first = top[0]?.name ?? input.city;
   const pickOf = (kind: PickKind) => market.partners.find((p) => p.kind === kind);
-  const rank = ["Highest", "Second-highest", "Third-highest"];
+  const rank = ["Highest", "2nd-highest", "3rd-highest", "4th-highest", "5th-highest"];
   return {
     headline: `Launch in ${first} first, where the taste for ${k1.toLowerCase()} runs hottest.`,
     where: top.map((n, i) => ({
       neighbourhood: n.name,
-      why: `${rank[i]} Gen Z affinity in ${input.city} (${Math.round(n.affinity * 100)}/100 across ${n.cells} map cells).`,
+      why: `${rank[i] ?? "High"} Gen Z affinity in ${input.city} (${Math.round(n.affinity * 100)}/100 across ${n.cells} map cells).`,
     })),
     collabs: (["artist", "podcast", "place"] as const)
       .map(pickOf)

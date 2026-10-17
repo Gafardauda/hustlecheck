@@ -5,7 +5,17 @@
  */
 import type { NeighbourhoodDemand, QlooCallRecord } from "./qloo";
 
-export const CITIES = ["Lagos", "London", "Accra"] as const;
+export const CITIES = [
+  "Lagos",
+  "Abuja",
+  "Ibadan",
+  "Accra",
+  "Nairobi",
+  "Cape Town",
+  "London",
+  "New York",
+  "Toronto",
+] as const;
 export type City = (typeof CITIES)[number];
 
 export const BUDGETS = ["Under $100", "$100–500", "$500–2,000", "$2,000+"] as const;

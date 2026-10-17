@@ -43,7 +43,7 @@ const planSchema = z.object({
   headline: z.string().describe("One punchy sentence: where to launch first and why, citing the data."),
   where: z
     .array(z.object({ neighbourhood: z.string(), why: z.string().describe("Cite the affinity number.") }))
-    .describe("The top 2–3 neighbourhoods, copied exactly from the evidence."),
+    .describe("The top 4–5 neighbourhoods, copied exactly from the evidence."),
   collabs: z
     .array(
       z.object({
@@ -159,7 +159,7 @@ function summarise(market: MarketResult) {
   return {
     comparableBrands: market.comparableBrands.map((b) => ({ name: b.name, genZAffinity: pct(b.affinity) })),
     neighbourhoods: market.neighbourhoods
-      .slice(0, 6)
+      .slice(0, 8)
       .map((n) => ({ name: n.name, affinity: pct(n.affinity), heatmapCells: n.cells })),
     partners: market.partners.slice(0, 10).map((p) => ({ name: p.name, kind: p.kind, affinity: pct(p.affinity) })),
   };

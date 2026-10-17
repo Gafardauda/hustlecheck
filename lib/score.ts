@@ -19,7 +19,7 @@ const toScore = (affinity: number) => Math.round(Math.max(0, Math.min(1, affinit
 
 /**
  * Audience fit: mean Gen Z affinity of the top 5 comparable brands.
- * Location demand: mean affinity of the top 3 neighbourhoods in the city heatmap.
+ * Location demand: mean affinity of the top 5 neighbourhoods in the city heatmap.
  * Partner strength: mean affinity of the top 5 partner picks.
  */
 export function computeSubScores(input: {
@@ -28,7 +28,7 @@ export function computeSubScores(input: {
   partnerAffinities: number[];
 }): SubScore[] {
   const audience = toScore(mean(topN(input.brandAffinities, 5)));
-  const location = toScore(mean(topN(input.neighbourhoodAffinities, 3)));
+  const location = toScore(mean(topN(input.neighbourhoodAffinities, 5)));
   const partners = toScore(mean(topN(input.partnerAffinities, 5)));
   return [
     {
@@ -43,7 +43,7 @@ export function computeSubScores(input: {
       label: "Location demand",
       score: location,
       weight: WEIGHTS.location,
-      evidence: `Mean heatmap affinity of the top ${Math.min(3, input.neighbourhoodAffinities.length)} neighbourhoods`,
+      evidence: `Mean heatmap affinity of the top ${Math.min(5, input.neighbourhoodAffinities.length)} neighbourhoods`,
     },
     {
       key: "partners",

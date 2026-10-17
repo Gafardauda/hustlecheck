@@ -27,11 +27,9 @@ import type {
   PickKind,
   StepKey,
 } from "./report";
-import { stepTitle } from "./report";
+import { audience as audienceConfig, stepTitle } from "./report";
 import { BENCHMARK } from "./benchmark";
 import { computePulseScore, computeSubScores } from "./score";
-
-const GEN_Z_AGE = "24_and_younger";
 
 export class Run {
   readonly calls: QlooCallRecord[] = [];
@@ -196,13 +194,14 @@ export async function analyzeMarket(run: Run, tagIds: string[], brandIds: string
   const tags = tagIds.filter((id) => run.knownTags.has(id)).slice(0, 4);
   const brands = brandIds.filter((id) => run.knownBrands.has(id)).slice(0, 4);
   const placeTags = tags.filter((id) => run.knownTags.get(id)?.parents?.some((p) => p.type === "urn:entity:place"));
+  const age = audienceConfig(run.input.audience).age;
 
   const full: QlooParams = {
     "signal.interests.tags": tags,
     "signal.interests.entities": brands,
-    "signal.demographics.age": GEN_Z_AGE,
+    "signal.demographics.age": age,
   };
-  const tagsOnly: QlooParams = { "signal.interests.tags": tags, "signal.demographics.age": GEN_Z_AGE };
+  const tagsOnly: QlooParams = { "signal.interests.tags": tags, "signal.demographics.age": age };
   const entities = (d: { results: { entities?: unknown[] } }) => d.results.entities?.length ?? 0;
   const cells = (d: { results: { heatmap?: unknown[] } }) => d.results.heatmap?.length ?? 0;
 
@@ -219,7 +218,7 @@ export async function analyzeMarket(run: Run, tagIds: string[], brandIds: string
       entities,
     );
     const picks = (r.data?.results.entities ?? []).slice(0, 5).map((e) => toPick(e, "brand"));
-    run.step("audience", `Checked how much 18–24s love ${picks.length} brands like yours.`, r.indexes);
+    run.step("audience", `Checked how much ${audienceConfig(run.input.audience).crowd} like ${picks.length} brands like yours.`, r.indexes);
     return picks;
   })();
 
@@ -232,14 +231,14 @@ export async function analyzeMarket(run: Run, tagIds: string[], brandIds: string
         ...(placeTags.length
           ? [
               {
-                params: { ...heat, "signal.interests.tags": placeTags, "signal.demographics.age": GEN_Z_AGE },
+                params: { ...heat, "signal.interests.tags": placeTags, "signal.demographics.age": age },
                 note: `The ${city} heatmap used place tags only.`,
               },
             ]
           : []),
         {
           params: { ...heat, ...tagsOnly, "signal.demographics.age": undefined },
-          note: `The ${city} heatmap used all ages (the Gen Z version returned no cells).`,
+          note: `The ${city} heatmap used all ages (the age-filtered version returned no spots).`,
         },
       ],
       cells,

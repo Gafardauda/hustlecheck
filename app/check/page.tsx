@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import CheckRun from "@/components/CheckRun";
-import { BUDGETS, CITIES, type City } from "@/lib/report";
+import { AUDIENCES, BUDGETS, CITIES, type AudienceKey, type City } from "@/lib/report";
 
 export default function CheckPage({ searchParams }: PageProps<"/check">) {
   return (
@@ -19,6 +19,8 @@ async function CheckContent({ searchParams }: Pick<PageProps<"/check">, "searchP
   const idea = one(params.idea).slice(0, 300);
   const city = one(params.city) as City;
   const budget = one(params.budget);
+  const audienceKey = one(params.audience);
+  const aud = (AUDIENCES.some((a) => a.key === audienceKey) ? audienceKey : "genz") as AudienceKey;
 
   if (idea.length < 3 || !CITIES.includes(city)) {
     return (
@@ -33,8 +35,13 @@ async function CheckContent({ searchParams }: Pick<PageProps<"/check">, "searchP
 
   return (
     <CheckRun
-      key={`${idea}|${city}|${budget}`}
-      input={{ idea, city, budget: (BUDGETS as readonly string[]).includes(budget) ? budget : undefined }}
+      key={`${idea}|${city}|${budget}|${aud}`}
+      input={{
+        idea,
+        city,
+        budget: (BUDGETS as readonly string[]).includes(budget) ? budget : undefined,
+        audience: aud,
+      }}
     />
   );
 }

@@ -36,7 +36,7 @@ export function computeSubScores(input: {
       label: "Who wants it",
       score: audience,
       weight: WEIGHTS.audience,
-      evidence: "How much 18–24s love brands like yours",
+      evidence: "How much your crowd loves brands like yours",
     },
     {
       key: "location",

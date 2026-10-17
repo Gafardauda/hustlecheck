@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { BUDGETS, CITIES, type City } from "@/lib/report";
+import { AUDIENCES, BUDGETS, CITIES, type AudienceKey, type City } from "@/lib/report";
 
 const EXAMPLES = [
   "Thrift streetwear pop-up for university students",
@@ -15,6 +15,7 @@ export default function PitchForm() {
   const router = useRouter();
   const [idea, setIdea] = useState("");
   const [city, setCity] = useState<City>("Lagos");
+  const [aud, setAud] = useState<AudienceKey>("genz");
   const [budget, setBudget] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const tooShort = idea.trim().length < 3;
@@ -23,7 +24,7 @@ export default function PitchForm() {
     e.preventDefault();
     if (tooShort) return;
     setSubmitting(true);
-    const params = new URLSearchParams({ idea: idea.trim(), city });
+    const params = new URLSearchParams({ idea: idea.trim(), city, audience: aud });
     if (budget) params.set("budget", budget);
     router.push(`/check?${params}`);
   }
@@ -70,6 +71,27 @@ export default function PitchForm() {
                 }`}
               >
                 {c}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend className="text-sm font-semibold">
+            Who&apos;s it for? <span className="font-normal text-faint">(target audience)</span>
+          </legend>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {AUDIENCES.map((a) => (
+              <button
+                key={a.key}
+                type="button"
+                aria-pressed={aud === a.key}
+                onClick={() => setAud(a.key)}
+                title={a.long}
+                className={`rounded-xl border px-4 py-2.5 text-sm font-medium transition ${
+                  aud === a.key ? "border-lime bg-lime text-ink" : "border-line text-muted hover:text-fg"
+                }`}
+              >
+                {a.long}
               </button>
             ))}
           </div>

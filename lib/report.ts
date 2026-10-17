@@ -20,10 +20,29 @@ export type City = (typeof CITIES)[number];
 
 export const BUDGETS = ["Under $100", "$100–500", "$500–2,000", "$2,000+"] as const;
 
+/**
+ * Target audiences, mapped to Qloo age brackets (comma-combined; `age: undefined`
+ * means no age signal). `crowd` is a plain plural used in copy.
+ */
+export const AUDIENCES = [
+  { key: "genz", label: "Gen Z", long: "Gen Z (18–29)", crowd: "Gen Z", age: "24_and_younger,25_to_29" },
+  { key: "young", label: "Under 25", long: "Under 25", crowd: "under-25s", age: "24_and_younger" },
+  { key: "millennials", label: "Millennials", long: "Millennials (25–40)", crowd: "millennials", age: "25_to_29,30_to_34,35_to_44" },
+  { key: "everyone", label: "All adults", long: "All adults", crowd: "adults", age: undefined },
+] as const;
+
+export type AudienceKey = (typeof AUDIENCES)[number]["key"];
+
+export function audience(key: AudienceKey | undefined): (typeof AUDIENCES)[number] {
+  return AUDIENCES.find((a) => a.key === key) ?? AUDIENCES[0];
+}
+
 export interface HustleInput {
   idea: string;
   city: City;
   budget?: string;
+  /** Target audience key; defaults to Gen Z. */
+  audience: AudienceKey;
 }
 
 export type SubScoreKey = "audience" | "location" | "partners";

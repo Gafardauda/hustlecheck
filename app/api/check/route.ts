@@ -1,7 +1,7 @@
 import { agentAvailable, runAgent } from "@/lib/agent";
 import { Run } from "@/lib/pipeline";
 import { buildPreviewReport } from "@/lib/preview-report";
-import { BUDGETS, CITIES, type CheckEvent, type City, type HustleInput } from "@/lib/report";
+import { AUDIENCES, BUDGETS, CITIES, type AudienceKey, type CheckEvent, type City, type HustleInput } from "@/lib/report";
 import { saveReport } from "@/lib/store";
 
 // The agent makes several Gemini and Qloo calls; allow up to a minute.
@@ -34,7 +34,8 @@ export async function POST(req: Request) {
     return Response.json({ error: `City must be one of: ${CITIES.join(", ")}.` }, { status: 400 });
   }
   const budget = BUDGETS.includes(body?.budget as (typeof BUDGETS)[number]) ? body?.budget : undefined;
-  const input: HustleInput = { idea, city: body!.city as City, budget };
+  const audienceKey = AUDIENCES.some((a) => a.key === body?.audience) ? (body!.audience as AudienceKey) : "genz";
+  const input: HustleInput = { idea, city: body!.city as City, budget, audience: audienceKey };
 
   const encoder = new TextEncoder();
   let closed = false;

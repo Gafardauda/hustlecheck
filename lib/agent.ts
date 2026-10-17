@@ -20,7 +20,7 @@ import {
   type MarketResult,
   type Run,
 } from "./pipeline";
-import type { HustleReport } from "./report";
+import { audience, type HustleReport } from "./report";
 
 export const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
 
@@ -28,13 +28,13 @@ export function agentAvailable(): boolean {
   return Boolean(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
 }
 
-const INSTRUCTIONS = `You are HustlePulse, an agent that checks whether a Gen Z side hustle has real local demand, using Qloo's taste graph.
+const INSTRUCTIONS = `You are HustlePulse, an agent that checks whether a side hustle has real local demand for a target audience, using Qloo's taste graph.
 
 Work in this order:
 1. Call research_idea once with:
    - 2–4 short keywords that Qloo is likely to have as taste tags (nouns like "thrift store", "streetwear", "jollof", "nail salon", "bubble tea" — not adjectives or words like "delivery" or "students"),
-   - 2–4 well-known brands these customers would already love,
-   - 1–2 artists who are popular with 18–24 year olds in the city right now (for example Nigerian artists for Lagos).
+   - 2–4 well-known brands the target audience would already love,
+   - 1–2 artists popular with that audience in the city right now (for example Nigerian artists for Lagos).
 2. If research_idea finds fewer than 2 relevant tags, call it again with different keywords (max 2 retries).
 3. Call analyze_market once with 2–4 tag IDs copied exactly from research_idea results — the most relevant to the idea, preferring tags that apply to "place" — and the brand IDs it found.
 Do not invent tag IDs, brands, places or numbers.`;
@@ -69,7 +69,7 @@ export async function runAgent(run: Run): Promise<HustleReport> {
   await generateText({
     model,
     system: INSTRUCTIONS,
-    prompt: `Hustle idea: "${run.input.idea}"\nCity: ${run.input.city}${run.input.budget ? `\nBudget: ${run.input.budget}` : ""}`,
+    prompt: `Hustle idea: "${run.input.idea}"\nCity: ${run.input.city}\nTarget audience: ${audience(run.input.audience).long}${run.input.budget ? `\nBudget: ${run.input.budget}` : ""}`,
     // Gemini must call a tool every step (it sometimes answers in text instead),
     // and the loop stops as soon as the market analysis has run; the plan is phase 2.
     toolChoice: "required",
@@ -133,10 +133,11 @@ export async function runAgent(run: Run): Promise<HustleReport> {
       model,
       output: Output.object({ schema: planSchema }),
       system:
-        "You write short, practical launch plans for Gen Z side hustles. Use only the places, partners and numbers in the evidence. Write in plain, upbeat English.",
+        "You write short, practical launch plans for side hustles aimed at a target audience. Use only the places, partners and numbers in the evidence. Write in plain, upbeat English.",
       prompt: JSON.stringify({
         idea: run.input.idea,
         city: run.input.city,
+        targetAudience: audience(run.input.audience).long,
         budget: run.input.budget ?? "not given",
         pulseScore: score.pulseScore,
         evidence: summarise(finalMarket),

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import type { HustleReport } from "@/lib/report";
+import { audience, type HustleReport } from "@/lib/report";
 import LaunchPlanView from "./LaunchPlanView";
 import Scorecard from "./Scorecard";
 import TrustPanel from "./TrustPanel";
@@ -21,11 +21,13 @@ export function ReportHeader({
   idea,
   city,
   budget,
+  audienceLabel,
   badges,
 }: {
   idea: string;
   city: string;
   budget?: string;
+  audienceLabel?: string;
   badges?: React.ReactNode;
 }) {
   return (
@@ -36,6 +38,7 @@ export function ReportHeader({
       <h1 className="mt-3 text-2xl font-black tracking-tight sm:text-4xl">{idea}</h1>
       <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted">
         <span>{city}</span>
+        {audienceLabel && <span>· {audienceLabel}</span>}
         {budget && <span>· Budget {budget}</span>}
         {badges}
       </p>
@@ -66,6 +69,7 @@ export default function ReportView({ report, shared = false }: { report: HustleR
         idea={report.input.idea}
         city={report.input.city}
         budget={report.input.budget}
+        audienceLabel={audience(report.input.audience).long}
         badges={
           <>
             {shared && <span className={pill}>Shared report · checked {checkedOn}</span>}

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { QlooCallRecord } from "@/lib/qloo";
-import { STEP_KEYS, stepTitle, type AgentStep, type CheckEvent, type HustleInput, type HustleReport } from "@/lib/report";
+import { audience, STEP_KEYS, stepTitle, type AgentStep, type CheckEvent, type HustleInput, type HustleReport } from "@/lib/report";
 import AgentTrace from "./AgentTrace";
 import ReportView, { ReportHeader, tabFromHash } from "./ReportView";
 
@@ -83,7 +83,12 @@ export default function CheckRun({ input }: { input: HustleInput }) {
   const titles = STEP_KEYS.map((key) => ({ key, title: stepTitle(key, input.city) }));
   return (
     <div>
-      <ReportHeader idea={input.idea} city={input.city} budget={input.budget} />
+      <ReportHeader
+        idea={input.idea}
+        city={input.city}
+        budget={input.budget}
+        audienceLabel={audience(input.audience).long}
+      />
       {error ? (
         <div role="alert" className="rounded-2xl border border-red-400/50 bg-panel p-6">
           <p className="font-semibold">The agent hit a problem.</p>

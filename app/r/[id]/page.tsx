@@ -11,7 +11,13 @@ export async function generateMetadata({ params }: PageProps<"/r/[id]">): Promis
   const report = await getReport((await params).id);
   if (!report) return { title: "Report not found — HustlePulse" };
   const title = `PulseScore ${report.pulseScore}: ${report.input.idea} in ${report.input.city} — HustlePulse`;
-  return { title, description: report.plan.headline, openGraph: { title, description: report.plan.headline } };
+  const description = report.plan.headline;
+  return {
+    title,
+    description,
+    openGraph: { title, description },
+    twitter: { card: "summary_large_image", title, description },
+  };
 }
 
 export default function SharedReportPage({ params }: PageProps<"/r/[id]">) {

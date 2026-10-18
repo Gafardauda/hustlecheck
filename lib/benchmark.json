@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-17T10:29:37.619Z",
+  "generatedAt": "2026-10-18T19:59:32.598Z",
   "ideas": 10,
   "cities": 9,
   "model": "gemini-3.5-flash-lite",
@@ -10,17 +10,17 @@
     {
       "metric": "Names real local places",
       "qloo": 100,
-      "llmOnly": 65
+      "llmOnly": 70
     },
     {
       "metric": "On-target local artists",
-      "qloo": 50,
-      "llmOnly": 25
+      "qloo": 48,
+      "llmOnly": 23
     },
     {
       "metric": "Consistent across runs",
-      "qloo": 42,
-      "llmOnly": 27
+      "qloo": 37,
+      "llmOnly": 29
     },
     {
       "metric": "Cites evidence",

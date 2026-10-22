@@ -9,9 +9,12 @@ export const maxDuration = 60;
 
 /** A short, safe reason for the fallback note (never includes keys or raw provider messages). */
 function agentFailureReason(err: unknown): string {
-  const e = err as { statusCode?: number; lastError?: { statusCode?: number }; message?: string };
+  const e = err as { name?: string; statusCode?: number; lastError?: { statusCode?: number }; message?: string };
   const status = e.statusCode ?? e.lastError?.statusCode;
   const msg = e.message?.toLowerCase() ?? "";
+  if (e.name === "TimeoutError" || e.name === "AbortError" || msg.includes("timeout") || msg.includes("aborted")) {
+    return "Gemini timed out";
+  }
   if (status === 429 || msg.includes("quota") || msg.includes("rate limit")) return "Gemini rate limit or quota reached";
   if (status === 400 && msg.includes("api key")) return "Gemini API key not valid";
   if (status === 401 || status === 403) return "Gemini API key rejected";

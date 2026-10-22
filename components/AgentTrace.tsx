@@ -49,10 +49,13 @@ export default function AgentTrace({
             {step && (
               <div className="mt-2 pl-8">
                 <p className="text-sm text-muted">{step.detail}</p>
-                {step.callIndexes.length > 0 && (
+                {step.callIndexes.some((ci) => calls[ci]?.ok) && (
                   <ul className="mt-2 space-y-1">
                     {step.callIndexes
-                      .filter((ci) => calls[ci])
+                      // Only show successful calls here; failed fallback attempts are
+                      // expected and would read as scary "failed" rows. The full list
+                      // (including failures) stays on the "Why trust this" screen.
+                      .filter((ci) => calls[ci]?.ok)
                       .map((ci) => (
                         <li key={ci} className="flex flex-wrap gap-x-3 font-mono text-xs text-faint">
                           <span className="text-violet-soft">{describeCall(calls[ci])}</span>

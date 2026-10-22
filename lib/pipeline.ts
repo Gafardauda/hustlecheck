@@ -162,13 +162,41 @@ export interface MarketResult {
 }
 
 /** Cross-domain taste: what else the target customer loves, beyond the idea itself. */
-// Books are intentionally excluded: Qloo's book data for these taste signals returns
-// off-target, US-skewed junk (political memoirs, sports books) across every city tested.
+// Books and video games are intentionally excluded: for these taste signals Qloo's book
+// data returns off-target US-skewed junk (political memoirs, sports books), and the
+// video_game insights call fails outright (four failed /v2/insights calls in the trace).
 const TASTE_DOMAINS: { type: QlooEntityType; key: string; label: string; emoji: string }[] = [
   { type: "urn:entity:movie", key: "movie", label: "Films", emoji: "🎬" },
   { type: "urn:entity:tv_show", key: "tv", label: "Shows", emoji: "📺" },
-  { type: "urn:entity:video_game", key: "game", label: "Games", emoji: "🎮" },
 ];
+
+// Place categories that don't suit a side-hustle collab: hotels/lodging (the main
+// complaint), plus transit and fuel. We keep markets, cafés, restaurants, malls,
+// event/conference spaces, campuses and the like.
+const UNSUITABLE_VENUE_TAGS = [
+  "hotel",
+  "hostel",
+  "motel",
+  "resort",
+  "lodging",
+  "bed breakfast",
+  "guest house",
+  "guesthouse",
+  "serviced apartment",
+  "airport",
+  "bus station",
+  "train station",
+  "gas station",
+  "petrol",
+];
+
+/** True when a place is lodging/transit (by its Qloo category/genre tags), so we drop it. */
+function isUnsuitableVenue(entity: QlooEntity): boolean {
+  const categories = (entity.tags ?? [])
+    .filter((t) => /:(category|genre):place/.test(t.type ?? ""))
+    .map((t) => t.name.toLowerCase());
+  return categories.some((name) => UNSUITABLE_VENUE_TAGS.some((bad) => name.includes(bad)));
+}
 
 function toPick(entity: QlooEntity, kind: PickKind): Pick {
   return {
@@ -291,7 +319,8 @@ export async function analyzeMarket(run: Run, tagIds: string[], brandIds: string
     // for cities where it's credible; elsewhere we show no podcasts rather than US names.
     const showPodcasts = podcastsLocalise(city);
     const artistBase = { "filter.type": "urn:entity:artist" as const, take: 4 };
-    const placeBase = { "filter.type": "urn:entity:place" as const, "filter.location.query": locationQuery, take: 4 };
+    // Over-fetch places so enough suitable venues survive the lodging/transit filter.
+    const placeBase = { "filter.type": "urn:entity:place" as const, "filter.location.query": locationQuery, take: 12 };
 
     // Per-kind attempt ladders. Artists get a location+age-only fallback so that when the
     // agent names no local artists, picks come from the city's own popular artists rather
@@ -338,7 +367,12 @@ export async function analyzeMarket(run: Run, tagIds: string[], brandIds: string
       ladders.map(({ kind, attempts }) => firstWithResults(run, attempts, entities).then((r) => ({ kind, ...r }))),
     );
     const picks = results
-      .flatMap((r) => (r.data?.results.entities ?? []).map((e) => toPick(e, r.kind)))
+      .flatMap((r) => {
+        let ents = r.data?.results.entities ?? [];
+        // Drop hotels/lodging/transit from venue picks, then keep the best few.
+        if (r.kind === "place") ents = ents.filter((e) => !isUnsuitableVenue(e)).slice(0, 5);
+        return ents.map((e) => toPick(e, r.kind));
+      })
       // Don't recommend the anchor artists back to the user as discoveries.
       .filter((p) => !(p.kind === "artist" && anchorNames.has(p.name)))
       .sort((a, b) => b.affinity - a.affinity);
@@ -350,7 +384,7 @@ export async function analyzeMarket(run: Run, tagIds: string[], brandIds: string
     return picks;
   })();
 
-  // Taste DNA: what else this customer loves, across films, shows, games and books.
+  // Taste DNA: what else this customer loves, across films and shows.
   const tasteDNA = (async (): Promise<TasteDomain[]> => {
     const results = await Promise.all(
       TASTE_DOMAINS.map((d) =>

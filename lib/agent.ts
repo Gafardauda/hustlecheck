@@ -23,6 +23,9 @@ import {
 import { audience, type HustleReport } from "./report";
 
 export const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
+// Bound each Gemini call so a hung request can't spin forever. Kept at 20s so that two
+// attempts plus the non-agent fallback still finish inside the route's 60s cap.
+const AGENT_STEP_TIMEOUT_MS = 20_000;
 
 export function agentAvailable(): boolean {
   return Boolean(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
@@ -63,10 +66,17 @@ export async function runAgent(run: Run): Promise<HustleReport> {
   const model = google(GEMINI_MODEL);
   let market: MarketResult | null = null;
   let usedTagIds: string[] = [];
+  let chosenBrandIds: string[] = [];
+  let analyzeRequested = false;
   let keywordsUsed: string[] = [];
 
-  // Phase 1: tool loop
-  await generateText({
+  // Phase 1: tool loop, bounded by a 25s timeout (per attempt) with one retry so a hung
+  // Gemini call can't spin forever. The loop only does Gemini's reasoning plus the light
+  // research lookups; the heavy Qloo analysis runs after the loop, outside the timeout.
+  // If the model call still fails, we throw and the route falls back to the non-agent
+  // pipeline with a friendly note.
+  const phase1 = (signal: AbortSignal) =>
+    generateText({
     model,
     system: INSTRUCTIONS,
     prompt: `Hustle idea: "${run.input.idea}"\nCity: ${run.input.city}\nTarget audience: ${audience(run.input.audience).long}${run.input.budget ? `\nBudget: ${run.input.budget}` : ""}`,
@@ -74,6 +84,8 @@ export async function runAgent(run: Run): Promise<HustleReport> {
     // and the loop stops as soon as the market analysis has run; the plan is phase 2.
     toolChoice: "required",
     stopWhen: [hasToolCall("analyze_market"), stepCountIs(6)],
+    abortSignal: signal,
+    maxRetries: 0,
     tools: {
       research_idea: tool({
         description: "Look up Qloo taste tags for keywords and resolve comparable brand names to Qloo IDs.",
@@ -106,14 +118,37 @@ export async function runAgent(run: Run): Promise<HustleReport> {
           if (!valid.length) {
             return { error: "None of those tag IDs came from research_idea. Copy IDs exactly from its results." };
           }
-          if (market) return { error: "analyze_market already ran for this check." };
+          if (analyzeRequested) return { error: "analyze_market already ran for this check." };
+          // Just capture the choice; the actual analysis runs after the loop (outside the
+          // Gemini timeout) since it makes ~15 Qloo calls and the loop stops here anyway.
           usedTagIds = valid;
-          market = await analyzeMarket(run, valid, brandIds);
-          return summarise(market);
+          chosenBrandIds = brandIds;
+          analyzeRequested = true;
+          return { ok: true };
         },
       }),
     },
   });
+
+  let phase1Error: unknown;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      await phase1(AbortSignal.timeout(AGENT_STEP_TIMEOUT_MS));
+      phase1Error = undefined;
+      break;
+    } catch (err) {
+      phase1Error = err;
+      if (analyzeRequested) break; // the model already chose tags; run the analysis below
+      console.error(`Agent phase 1 attempt ${attempt + 1} timed out or failed`, err);
+    }
+  }
+  // A hung/failed agent that never chose its tags → fall back to the non-agent pipeline.
+  if (phase1Error && !analyzeRequested) throw phase1Error;
+
+  // Heavy Qloo analysis, outside the Gemini timeout (it's not a stall risk).
+  if (analyzeRequested) {
+    market = await analyzeMarket(run, usedTagIds, chosenBrandIds);
+  }
 
   // If the model never got as far as analyze_market, finish the pipeline ourselves.
   if (!market) {
@@ -132,6 +167,8 @@ export async function runAgent(run: Run): Promise<HustleReport> {
     const { output } = await generateText({
       model,
       output: Output.object({ schema: planSchema }),
+      abortSignal: AbortSignal.timeout(AGENT_STEP_TIMEOUT_MS),
+      maxRetries: 1,
       system:
         "You write short, practical launch plans for side hustles aimed at a target audience. Use only the places, partners and numbers in the evidence. Write in plain, upbeat English.",
       prompt: JSON.stringify({

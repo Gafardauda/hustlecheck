@@ -21,7 +21,16 @@ export default function CheckRun({ input }: { input: HustleInput }) {
 
   useEffect(() => {
     const controller = new AbortController();
+    let settled = false; // a report or error arrived
+    // Backstop so the UI can never spin forever if the server dies or the stream stalls.
+    const watchdog = setTimeout(() => {
+      if (!settled) {
+        controller.abort();
+        setError("This check took too long. Please try again in a moment.");
+      }
+    }, 75_000);
     const handle = (event: CheckEvent) => {
+      if (event.type === "report" || event.type === "error") settled = true;
       if (event.type === "step")
         setSteps((prev) => {
           const i = prev.findIndex((s) => s.key === event.step.key);
@@ -64,10 +73,16 @@ export default function CheckRun({ input }: { input: HustleInput }) {
         buffer = lines.pop() ?? "";
         for (const line of lines) if (line.trim()) handle(JSON.parse(line) as CheckEvent);
       }
+      // The stream ended. If no report or error ever arrived (e.g. the server timed out
+      // mid-run), surface an error instead of leaving the spinner running forever.
+      if (!settled) setError("The check didn't finish. Please try again.");
     })().catch((err: Error) => {
       if (err.name !== "AbortError") setError(err.message || "Connection lost. Please try again.");
     });
-    return () => controller.abort();
+    return () => {
+      clearTimeout(watchdog);
+      controller.abort();
+    };
   }, [input]);
 
   // Reveal finished steps one at a time.

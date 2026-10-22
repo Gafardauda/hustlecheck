@@ -282,41 +282,60 @@ export async function analyzeMarket(run: Run, tagIds: string[], brandIds: string
   })();
 
   const partners = (async () => {
-    // Artists and podcasts aren't tied to a city, so bias them with Qloo's location signal,
-    // and anchor artists on the local artists the agent named (if Qloo found them).
+    // Bias partners toward the city with Qloo's location signal, and anchor artists on
+    // the local artists the agent named (if Qloo found them).
     const local = locale;
     const anchors = [...run.knownArtists.keys()].slice(0, 2);
-    const artistSignal: QlooParams = anchors.length ? { ...tagsOnly, ...local, "signal.interests.entities": anchors } : { ...full, ...local };
+    const anchorNames = new Set(anchors.map((id) => run.knownArtists.get(id)!.name));
     // Qloo's podcast data is US-centric and doesn't localise, so we only include it
     // for cities where it's credible; elsewhere we show no podcasts rather than US names.
     const showPodcasts = podcastsLocalise(city);
-    const kinds: [PickKind, QlooParams, QlooParams][] = [
-      ["artist", { "filter.type": "urn:entity:artist", take: 4 }, artistSignal],
+    const artistBase = { "filter.type": "urn:entity:artist" as const, take: 4 };
+    const placeBase = { "filter.type": "urn:entity:place" as const, "filter.location.query": locationQuery, take: 4 };
+
+    // Per-kind attempt ladders. Artists get a location+age-only fallback so that when the
+    // agent names no local artists, picks come from the city's own popular artists rather
+    // than drifting to US names via the idea's tags and brand signals.
+    const ladders: { kind: PickKind; attempts: { params: QlooParams; note?: string }[] }[] = [
+      {
+        kind: "artist",
+        attempts: [
+          ...(anchors.length
+            ? [{ params: { ...artistBase, ...tagsOnly, ...local, "signal.interests.entities": anchors } }]
+            : []),
+          { params: { ...artistBase, "signal.location.query": locationQuery, "signal.demographics.age": age } },
+          {
+            params: { ...artistBase, "signal.interests.tags": tags, "signal.location.query": locationQuery },
+            note: "Artist picks used all ages.",
+          },
+        ],
+      },
       ...(showPodcasts
-        ? ([["podcast", { "filter.type": "urn:entity:podcast", take: 3 }, { ...full, ...local }]] as [
-            PickKind,
-            QlooParams,
-            QlooParams,
-          ][])
-        : []),
-      ["place", { "filter.type": "urn:entity:place", "filter.location.query": locationQuery, take: 4 }, full],
-    ];
-    const anchorNames = new Set(anchors.map((id) => run.knownArtists.get(id)!.name));
-    const results = await Promise.all(
-      kinds.map(([kind, base, signal]) =>
-        firstWithResults(
-          run,
-          [
-            { params: { ...base, ...signal } },
-            { params: { ...base, ...tagsOnly, ...(kind === "place" ? {} : local) } },
+        ? [
             {
-              params: { ...base, "signal.interests.tags": tags },
-              note: `${kind === "place" ? "Venue" : kind[0].toUpperCase() + kind.slice(1)} picks used all ages.`,
+              kind: "podcast" as PickKind,
+              attempts: [
+                { params: { "filter.type": "urn:entity:podcast", take: 3, ...full, ...local } },
+                { params: { "filter.type": "urn:entity:podcast", take: 3, ...tagsOnly, ...local } },
+                {
+                  params: { "filter.type": "urn:entity:podcast", take: 3, "signal.interests.tags": tags },
+                  note: "Podcast picks used all ages.",
+                },
+              ],
             },
-          ],
-          entities,
-        ).then((r) => ({ kind, ...r })),
-      ),
+          ]
+        : []),
+      {
+        kind: "place",
+        attempts: [
+          { params: { ...placeBase, ...full } },
+          { params: { ...placeBase, ...tagsOnly } },
+          { params: { ...placeBase, "signal.interests.tags": tags }, note: "Venue picks used all ages." },
+        ],
+      },
+    ];
+    const results = await Promise.all(
+      ladders.map(({ kind, attempts }) => firstWithResults(run, attempts, entities).then((r) => ({ kind, ...r }))),
     );
     const picks = results
       .flatMap((r) => (r.data?.results.entities ?? []).map((e) => toPick(e, r.kind)))

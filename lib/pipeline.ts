@@ -29,7 +29,7 @@ import type {
   StepKey,
   TasteDomain,
 } from "./report";
-import { audience as audienceConfig, stepTitle } from "./report";
+import { audience as audienceConfig, brandsLocalise, podcastsLocalise, stepTitle } from "./report";
 import { BENCHMARK } from "./benchmark";
 import { computePulseScore, computeSubScores } from "./score";
 
@@ -153,6 +153,8 @@ export async function researchIdea(
 
 export interface MarketResult {
   comparableBrands: Pick[];
+  /** True when comparableBrands fell back to global (non-localised) picks. */
+  brandsGlobal: boolean;
   neighbourhoods: NeighbourhoodDemand[];
   partners: Pick[];
   tasteDNA: TasteDomain[];
@@ -160,11 +162,12 @@ export interface MarketResult {
 }
 
 /** Cross-domain taste: what else the target customer loves, beyond the idea itself. */
+// Books are intentionally excluded: Qloo's book data for these taste signals returns
+// off-target, US-skewed junk (political memoirs, sports books) across every city tested.
 const TASTE_DOMAINS: { type: QlooEntityType; key: string; label: string; emoji: string }[] = [
   { type: "urn:entity:movie", key: "movie", label: "Films", emoji: "🎬" },
   { type: "urn:entity:tv_show", key: "tv", label: "Shows", emoji: "📺" },
   { type: "urn:entity:video_game", key: "game", label: "Games", emoji: "🎮" },
-  { type: "urn:entity:book", key: "book", label: "Reads", emoji: "📚" },
 ];
 
 function toPick(entity: QlooEntity, kind: PickKind): Pick {
@@ -207,6 +210,10 @@ export async function analyzeMarket(run: Run, tagIds: string[], brandIds: string
   const placeTags = tags.filter((id) => run.knownTags.get(id)?.parents?.some((p) => p.type === "urn:entity:place"));
   const age = audienceConfig(run.input.audience).age;
 
+  // A geography signal to bias non-place entities (brands, artists, taste) toward
+  // the city. Qloo silently ignores signals a filter.type can't use, so each stage
+  // tries the located query first and falls back to a global query if it returns nothing.
+  const locale: QlooParams = { "signal.location.query": locationQuery };
   const full: QlooParams = {
     "signal.interests.tags": tags,
     "signal.interests.entities": brands,
@@ -215,19 +222,27 @@ export async function analyzeMarket(run: Run, tagIds: string[], brandIds: string
   const tagsOnly: QlooParams = { "signal.interests.tags": tags, "signal.demographics.age": age };
   const entities = (d: { results: { entities?: unknown[] } }) => d.results.entities?.length ?? 0;
   const cells = (d: { results: { heatmap?: unknown[] } }) => d.results.heatmap?.length ?? 0;
+  const globalBrandsNote = `Qloo had no ${city}-specific brand data, so these are global brands your crowd loves.`;
 
+  // Qloo returns genuinely local brands for some markets (London → Palace, Dr. Martens)
+  // but only global fashion houses for cities where it under-indexes local brands, so
+  // we label those picks honestly as global rather than implying they're local.
+  const brandsGlobal = !brandsLocalise(city);
   const audience = (async () => {
+    // Keep the idea's taste tags in every attempt so results stay on-theme (thrift,
+    // vintage, streetwear) rather than drifting to general fashion. Location is sent
+    // too; it helps where Qloo has local brand data and is harmless where it doesn't.
     const r = await firstWithResults(
       run,
       [
+        { params: { "filter.type": "urn:entity:brand", ...full, ...locale, take: 8 } },
+        { params: { "filter.type": "urn:entity:brand", ...tagsOnly, ...locale, take: 8 } },
         { params: { "filter.type": "urn:entity:brand", ...full, take: 8 } },
-        {
-          params: { "filter.type": "urn:entity:brand", ...tagsOnly, take: 8 },
-          note: "Comparable brands were measured from taste tags only (brand signals returned nothing).",
-        },
+        { params: { "filter.type": "urn:entity:brand", ...tagsOnly, take: 8 } },
       ],
       entities,
     );
+    if (brandsGlobal) run.notes.push(globalBrandsNote);
     const picks = (r.data?.results.entities ?? []).slice(0, 5).map((e) => toPick(e, "brand"));
     run.step("audience", `Checked how much ${audienceConfig(run.input.audience).crowd} like ${picks.length} brands like yours.`, r.indexes);
     return picks;
@@ -269,12 +284,21 @@ export async function analyzeMarket(run: Run, tagIds: string[], brandIds: string
   const partners = (async () => {
     // Artists and podcasts aren't tied to a city, so bias them with Qloo's location signal,
     // and anchor artists on the local artists the agent named (if Qloo found them).
-    const local = { "signal.location.query": locationQuery };
+    const local = locale;
     const anchors = [...run.knownArtists.keys()].slice(0, 2);
     const artistSignal: QlooParams = anchors.length ? { ...tagsOnly, ...local, "signal.interests.entities": anchors } : { ...full, ...local };
+    // Qloo's podcast data is US-centric and doesn't localise, so we only include it
+    // for cities where it's credible; elsewhere we show no podcasts rather than US names.
+    const showPodcasts = podcastsLocalise(city);
     const kinds: [PickKind, QlooParams, QlooParams][] = [
       ["artist", { "filter.type": "urn:entity:artist", take: 4 }, artistSignal],
-      ["podcast", { "filter.type": "urn:entity:podcast", take: 3 }, { ...full, ...local }],
+      ...(showPodcasts
+        ? ([["podcast", { "filter.type": "urn:entity:podcast", take: 3 }, { ...full, ...local }]] as [
+            PickKind,
+            QlooParams,
+            QlooParams,
+          ][])
+        : []),
       ["place", { "filter.type": "urn:entity:place", "filter.location.query": locationQuery, take: 4 }, full],
     ];
     const anchorNames = new Set(anchors.map((id) => run.knownArtists.get(id)!.name));
@@ -301,7 +325,7 @@ export async function analyzeMarket(run: Run, tagIds: string[], brandIds: string
       .sort((a, b) => b.affinity - a.affinity);
     run.step(
       "partners",
-      `Lined up ${picks.length} artists, podcasts and ${city} venues to collab with.`,
+      `Lined up ${picks.length} ${showPodcasts ? "artists, podcasts and" : "artists and"} ${city} venues to collab with.`,
       results.flatMap((r) => r.indexes),
     );
     return picks;
@@ -313,7 +337,12 @@ export async function analyzeMarket(run: Run, tagIds: string[], brandIds: string
       TASTE_DOMAINS.map((d) =>
         firstWithResults(
           run,
-          [{ params: { "filter.type": d.type, ...full, take: 5 } }, { params: { "filter.type": d.type, ...tagsOnly, take: 5 } }],
+          [
+            { params: { "filter.type": d.type, ...full, ...locale, take: 5 } },
+            { params: { "filter.type": d.type, ...tagsOnly, ...locale, take: 5 } },
+            { params: { "filter.type": d.type, ...full, take: 5 } },
+            { params: { "filter.type": d.type, ...tagsOnly, take: 5 } },
+          ],
           entities,
         ).then((r) => ({ d, r })),
       ),
@@ -343,6 +372,7 @@ export async function analyzeMarket(run: Run, tagIds: string[], brandIds: string
   const [comparableBrands, loc, partnerPicks, dna] = await Promise.all([audience, location, partners, tasteDNA]);
   return {
     comparableBrands,
+    brandsGlobal,
     neighbourhoods: loc.hoods,
     partners: partnerPicks,
     tasteDNA: dna,
@@ -447,6 +477,7 @@ export function assembleReport(
     subScores: parts.score.subScores,
     neighbourhoods: parts.market.neighbourhoods,
     comparableBrands: parts.market.comparableBrands,
+    brandsGlobal: parts.market.brandsGlobal,
     partners: parts.market.partners,
     tasteDNA: parts.market.tasteDNA,
     plan: parts.plan,

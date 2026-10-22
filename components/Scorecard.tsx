@@ -42,7 +42,15 @@ export default function Scorecard({ report }: { report: HustleReport }) {
       </Card>
 
       <Card className="lg:col-span-2">
-        <CardTitle hint="Brands your future customers already love.">Brands they already love</CardTitle>
+        <CardTitle
+          hint={
+            report.brandsGlobal
+              ? `Qloo had no ${report.input.city}-specific brand data, so these are global brands your crowd loves.`
+              : "Brands your future customers already love."
+          }
+        >
+          {report.brandsGlobal ? "Global brands they love" : "Brands they already love"}
+        </CardTitle>
         <PickList picks={report.comparableBrands} />
       </Card>
       <Card className="lg:col-span-3">

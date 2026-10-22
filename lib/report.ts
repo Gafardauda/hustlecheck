@@ -18,6 +18,27 @@ export const CITIES = [
 ] as const;
 export type City = (typeof CITIES)[number];
 
+/**
+ * Cities where Qloo's podcast catalogue localises acceptably — it's US-centric,
+ * so elsewhere we hide the podcast picks rather than show US names (David Dobrik,
+ * Logan Paul) to a Lagos founder. See analyzeMarket in lib/pipeline.ts.
+ */
+export const PODCAST_CITIES: readonly City[] = ["New York"];
+export function podcastsLocalise(city: City): boolean {
+  return PODCAST_CITIES.includes(city);
+}
+
+/**
+ * Cities where Qloo's brand graph returns genuinely local/on-theme brands (tested:
+ * London → Palace, Dr. Martens, Off-White). For other cities Qloo under-indexes local
+ * brands and returns global fashion houses, so we label those picks honestly as global
+ * rather than implying they're local. See analyzeMarket in lib/pipeline.ts.
+ */
+export const BRAND_LOCAL_CITIES: readonly City[] = ["New York", "London", "Toronto"];
+export function brandsLocalise(city: City): boolean {
+  return BRAND_LOCAL_CITIES.includes(city);
+}
+
 export const BUDGETS = ["Under $100", "$100–500", "$500–2,000", "$2,000+"] as const;
 
 /**
@@ -152,6 +173,8 @@ export interface HustleReport {
   subScores: SubScore[];
   neighbourhoods: NeighbourhoodDemand[];
   comparableBrands: Pick[];
+  /** True when Qloo had no city-specific brand data, so comparableBrands are global picks. */
+  brandsGlobal?: boolean;
   partners: Pick[];
   /** Cross-domain taste profile of the target customer (Qloo's signature strength). */
   tasteDNA: TasteDomain[];

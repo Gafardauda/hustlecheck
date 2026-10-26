@@ -100,6 +100,7 @@ export async function researchIdea(
   brandNames: string[],
   artistNames: string[] = [],
 ): Promise<ResearchResult> {
+  const researchStarted = Date.now();
   const [tagResults, brandResults, artistResults] = await Promise.all([
     Promise.all(keywords.map((k) => run.track(findTags(k, { take: 5, ...run.opts })))),
     Promise.all(
@@ -144,6 +145,7 @@ export async function researchIdea(
     `Matched ${keywords.map((k) => `“${k}”`).join(", ")} to ${unique.length} taste signals, ${brands.length} similar brands${artists.length ? ` and ${artists.length} local artists` : ""}.`,
     [...tagResults, ...brandResults, ...artistResults].map((r) => r.index),
   );
+  console.log(`[timing] research: ${Date.now() - researchStarted}ms`);
   return { tags: unique, brands, artists, emptyKeywords, missingBrands };
 }
 
@@ -196,6 +198,88 @@ function isUnsuitableVenue(entity: QlooEntity): boolean {
     .filter((t) => /:(category|genre):place/.test(t.type ?? ""))
     .map((t) => t.name.toLowerCase());
   return categories.some((name) => UNSUITABLE_VENUE_TAGS.some((bad) => name.includes(bad)));
+}
+
+// --- Artist quality + region filters ---------------------------------------
+const CITY_REGION: Record<string, string> = {
+  lagos: "africa", abuja: "africa", ibadan: "africa", accra: "africa",
+  nairobi: "africa", "cape town": "africa", london: "uk", "new york": "na", toronto: "na",
+};
+// Nationality demonyms as they appear in Qloo artist descriptions → region.
+const DEMONYM_REGION: Record<string, string> = {
+  nigerian: "africa", ghanaian: "africa", kenyan: "africa", "south african": "africa",
+  tanzanian: "africa", ugandan: "africa", ivorian: "africa", senegalese: "africa",
+  cameroonian: "africa", beninese: "africa", togolese: "africa", zimbabwean: "africa",
+  zambian: "africa", congolese: "africa", ethiopian: "africa", rwandan: "africa",
+  malian: "africa", angolan: "africa", mozambican: "africa", namibian: "africa", african: "africa",
+  british: "uk", english: "uk", scottish: "uk", welsh: "uk", irish: "uk",
+  american: "na", canadian: "na",
+  australian: "other", french: "other", german: "other", dutch: "other", swedish: "other",
+  spanish: "other", italian: "other", brazilian: "other", jamaican: "other", indian: "other",
+  korean: "other", japanese: "other", chinese: "other", filipino: "other", mexican: "other",
+};
+
+const entityDescription = (e: QlooEntity): string =>
+  (e.properties?.short_description ?? e.properties?.description ?? "").trim();
+
+// Qloo sometimes returns thin "artist" rows with a boilerplate description and no real
+// detail (e.g. "Karim is an individual music artist. Specific details are limited.").
+function hasRealDescription(e: QlooEntity): boolean {
+  const d = entityDescription(e);
+  if (d.length < 30) return false;
+  return !/\b(individual (music )?artist|specific details|details are (limited|scarce|unavailable|not available)|little (is )?known|information is (limited|unavailable|scarce))\b/i.test(d);
+}
+
+// Keep artists whose stated nationality fits the city's region; drop clearly out-of-region
+// ones (a British artist for Lagos). Artists with no stated nationality are kept.
+function artistRegionOk(e: QlooEntity, city: string): boolean {
+  const region = CITY_REGION[city.toLowerCase()];
+  if (!region) return true;
+  const d = entityDescription(e).toLowerCase();
+  const regions = Object.entries(DEMONYM_REGION).filter(([dem]) => d.includes(dem)).map(([, r]) => r);
+  if (!regions.length) return true; // no nationality stated → keep
+  return regions.includes(region); // keep if any stated nationality matches the city's region
+}
+
+const isGoodArtist = (e: QlooEntity, city: string): boolean => hasRealDescription(e) && artistRegionOk(e, city);
+
+// --- Brand relevance filter ------------------------------------------------
+// Industries that are never a useful "brands your customers love" comp for a consumer
+// side hustle (a bank or a charity showing up for a bubble-tea stand).
+const IRRELEVANT_BRAND_CATS = [
+  "financial", "finance", "bank", "insurance", "nonprofit", "non-profit", "ngo", "charity",
+  "government", "aviation", "airline", "ridesharing", "transport", "logistics",
+  "telecommunication", "telecom", "utility", "petroleum", "oil & gas", "real estate",
+];
+// Map the idea's words to the brand categories that fit it, so brands stay on-theme.
+const IDEA_BRAND_DOMAINS: { match: RegExp; cats: string[] }[] = [
+  { match: /\b(tea|coffee|cafe|café|food|jollof|chops?|restaurant|bakery|baker|drink|juice|smoothie|snack|bubble|boba|meal|eatery|bar|grill|pizza|kitchen|catering|dessert|pastry)\b/, cats: ["food & beverage", "drink", "beverage", "coffee & tea", "restaurant", "snack"] },
+  { match: /\b(thrift|vintage|streetwear|clothing|cloth|fashion|sneakers?|apparel|wear|boutique|fabric|tailor|outfit|footwear|shoe)\b/, cats: ["apparel", "fashion", "footwear", "clothing", "retail", "luxury", "sportswear"] },
+  { match: /\b(nail|beauty|skincare|salon|makeup|cosmetics?|hair|spa|lash|brow|wig|barber)\b/, cats: ["beauty", "cosmetic", "personal care", "health & beauty", "hair care", "skincare"] },
+  { match: /\b(gym|fitness|workout|dance|yoga|pilates|sports?|athletic|amapiano)\b/, cats: ["sport", "fitness", "activewear", "athletic", "sportswear", "health & wellness"] },
+  { match: /\b(studio|content|photo|podcast|design|art|creator|video|music|film|media|gaming|game|tech)\b/, cats: ["technology", "media", "software", "app", "electronics", "entertainment", "gaming"] },
+];
+
+const brandCategoryText = (e: QlooEntity): string => (e.tags ?? []).map((t) => t.name).join(" ").toLowerCase();
+
+const isIrrelevantBrand = (e: QlooEntity): boolean =>
+  IRRELEVANT_BRAND_CATS.some((bad) => brandCategoryText(e).includes(bad));
+
+/** 1 when the brand's categories/description match the idea's domain, else 0 (used to sort). */
+function brandRelevance(e: QlooEntity, cats: string[]): number {
+  if (!cats.length) return 0;
+  const s = `${brandCategoryText(e)} ${entityDescription(e).toLowerCase()}`;
+  return cats.some((c) => s.includes(c)) ? 1 : 0;
+}
+
+// --- Per-stage timing (to find and speed up slow steps) --------------------
+async function timed<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  const t0 = Date.now();
+  try {
+    return await fn();
+  } finally {
+    console.log(`[timing] ${label}: ${Date.now() - t0}ms`);
+  }
 }
 
 function toPick(entity: QlooEntity, kind: PickKind): Pick {
@@ -256,27 +340,44 @@ export async function analyzeMarket(run: Run, tagIds: string[], brandIds: string
   // but only global fashion houses for cities where it under-indexes local brands, so
   // we label those picks honestly as global rather than implying they're local.
   const brandsGlobal = !brandsLocalise(city);
-  const audience = (async () => {
+  // Which brand categories fit this idea, so a bubble-tea stand surfaces drinks brands,
+  // not a bank or a charity.
+  const ideaText = `${run.input.idea} ${tags.map((id) => run.knownTags.get(id)?.name ?? "").join(" ")}`.toLowerCase();
+  const ideaBrandCats = IDEA_BRAND_DOMAINS.filter((d) => d.match.test(ideaText)).flatMap((d) => d.cats);
+  const audience = timed("brands", async () => {
     // Keep the idea's taste tags in every attempt so results stay on-theme (thrift,
     // vintage, streetwear) rather than drifting to general fashion. Location is sent
     // too; it helps where Qloo has local brand data and is harmless where it doesn't.
     const r = await firstWithResults(
       run,
       [
-        { params: { "filter.type": "urn:entity:brand", ...full, ...locale, take: 8 } },
-        { params: { "filter.type": "urn:entity:brand", ...tagsOnly, ...locale, take: 8 } },
-        { params: { "filter.type": "urn:entity:brand", ...full, take: 8 } },
-        { params: { "filter.type": "urn:entity:brand", ...tagsOnly, take: 8 } },
+        { params: { "filter.type": "urn:entity:brand", ...full, ...locale, take: 10 } },
+        { params: { "filter.type": "urn:entity:brand", ...tagsOnly, ...locale, take: 10 } },
+        { params: { "filter.type": "urn:entity:brand", ...full, take: 10 } },
+        { params: { "filter.type": "urn:entity:brand", ...tagsOnly, take: 10 } },
       ],
       entities,
     );
     if (brandsGlobal) run.notes.push(globalBrandsNote);
-    const picks = (r.data?.results.entities ?? []).slice(0, 5).map((e) => toPick(e, "brand"));
+    // Drop off-theme industries (banks, charities, airlines…). If Qloo has enough brands
+    // that match the idea's domain, show only those; otherwise fall back to on-theme-first
+    // so the section isn't left thin when the domain pool is small.
+    const affinity = (e: QlooEntity) => e.query?.affinity ?? e.popularity;
+    const kept = (r.data?.results.entities ?? []).filter((e) => !isIrrelevantBrand(e));
+    const onTheme = kept.filter((e) => brandRelevance(e, ideaBrandCats) === 1).sort((a, b) => affinity(b) - affinity(a));
+    const chosen =
+      onTheme.length >= 3
+        ? onTheme
+        : [...kept].sort((a, b) => {
+            const rel = brandRelevance(b, ideaBrandCats) - brandRelevance(a, ideaBrandCats);
+            return rel !== 0 ? rel : affinity(b) - affinity(a);
+          });
+    const picks = chosen.slice(0, 5).map((e) => toPick(e, "brand"));
     run.step("audience", `Checked how much ${audienceConfig(run.input.audience).crowd} like ${picks.length} brands like yours.`, r.indexes);
     return picks;
-  })();
+  });
 
-  const location = (async () => {
+  const location = timed("location", async () => {
     const heat = { "filter.type": "urn:heatmap", "filter.location.query": locationQuery };
     const r = await firstWithResults(
       run,
@@ -307,9 +408,9 @@ export async function analyzeMarket(run: Run, tagIds: string[], brandIds: string
       r.indexes,
     );
     return { hoods, cells: heatmap.length };
-  })();
+  });
 
-  const partners = (async () => {
+  const partners = timed("partners", async () => {
     // Bias partners toward the city with Qloo's location signal, and anchor artists on
     // the local artists the agent named (if Qloo found them).
     const local = locale;
@@ -318,7 +419,8 @@ export async function analyzeMarket(run: Run, tagIds: string[], brandIds: string
     // Qloo's podcast data is US-centric and doesn't localise, so we only include it
     // for cities where it's credible; elsewhere we show no podcasts rather than US names.
     const showPodcasts = podcastsLocalise(city);
-    const artistBase = { "filter.type": "urn:entity:artist" as const, take: 4 };
+    // Over-fetch artists so enough survive the description/region filter.
+    const artistBase = { "filter.type": "urn:entity:artist" as const, take: 12 };
     // Over-fetch places so enough suitable venues survive the lodging/transit filter.
     const placeBase = { "filter.type": "urn:entity:place" as const, "filter.location.query": locationQuery, take: 12 };
 
@@ -371,6 +473,8 @@ export async function analyzeMarket(run: Run, tagIds: string[], brandIds: string
         let ents = r.data?.results.entities ?? [];
         // Drop hotels/lodging/transit from venue picks, then keep the best few.
         if (r.kind === "place") ents = ents.filter((e) => !isUnsuitableVenue(e)).slice(0, 5);
+        // Drop thin or out-of-region artists (no real description, or wrong region).
+        if (r.kind === "artist") ents = ents.filter((e) => isGoodArtist(e, city)).slice(0, 4);
         return ents.map((e) => toPick(e, r.kind));
       })
       // Don't recommend the anchor artists back to the user as discoveries.
@@ -382,10 +486,10 @@ export async function analyzeMarket(run: Run, tagIds: string[], brandIds: string
       results.flatMap((r) => r.indexes),
     );
     return picks;
-  })();
+  });
 
   // Taste DNA: what else this customer loves, across films and shows.
-  const tasteDNA = (async (): Promise<TasteDomain[]> => {
+  const tasteDNA = timed("tasteDNA", async (): Promise<TasteDomain[]> => {
     const results = await Promise.all(
       TASTE_DOMAINS.map((d) =>
         firstWithResults(
@@ -420,7 +524,7 @@ export async function analyzeMarket(run: Run, tagIds: string[], brandIds: string
       results.flatMap(({ r }) => r.indexes),
     );
     return domains;
-  })();
+  });
 
   const [comparableBrands, loc, partnerPicks, dna] = await Promise.all([audience, location, partners, tasteDNA]);
   return {
